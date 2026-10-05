@@ -41,6 +41,20 @@ render:
   timeout_seconds: 300
   composer: Sayantan
 
+  # WAV render backend: "fluidsynth" (default) or "vst3".
+  #
+  # fluidsynth — renders score.mid through a SoundFont (GeneralUser-GS.sf2).
+  #              Fast, no plugin loading, works with the existing pipeline.
+  #              Ignores vst3_path. Honors `soundfont`, `lufs`.
+  #
+  # vst3       — renders score.mid through a VST3 instrument plugin.
+  #              Set `vst3_path` below to the .vst3 bundle you want to use.
+  #              Requires `pnpm install nvst3-host`.
+  #              Ignores `soundfont` and `lufs`; the plugin's own patch
+  #              determines the sound.
+  backend: vst3
+  vst3_path: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
+
   # MIDI program numbers per role.
   # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar
   # 32=Acoustic Bass        33=Fingered Bass  34=Picked Bass    48=Strings
@@ -50,6 +64,11 @@ render:
   #   ch 1  ins voice    (V: Ins)
   #   ch 2  accompaniment (abcjs-generated from chord symbols)
   #   ch 3  reserved for future use
+  #
+  # Note: these programs are honored by the FluidSynth backend. The VST3
+  # backend loads a single plugin for all channels, so programs are ignored
+  # in that mode (see scripts/midi2wav-vst.mjs). A future revision can route
+  # per-channel to multiple plugin instances.
   voice_programs:
     melody:         24    # V: Vocal  → Nylon String Guitar (lead)
     ins:             0    # V: Ins    → Acoustic Grand Piano (counter-melody)

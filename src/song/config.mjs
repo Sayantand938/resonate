@@ -76,6 +76,11 @@ export function loadConfig(configPathOverride) {
             lufs: Number(renderRaw.lufs ?? -14),
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
+
+            // WAV render backend: "fluidsynth" (default) or "vst3".
+            backend: String(renderRaw.backend ?? 'fluidsynth').toLowerCase(),
+            vst3Path: renderRaw.vst3_path ?? null,
+
             voicePrograms: {
                 melody: Number(voiceProgramsRaw.melody ?? 0),
                 ins: Number(voiceProgramsRaw.ins ?? 0),
