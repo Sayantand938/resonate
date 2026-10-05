@@ -50,7 +50,7 @@ export async function runScore(config, songFolder) {
 }
 
 // =====================================================================
-// midi  (score.abc -> score.mid via abcjs)
+// midi  (score.abc -> score.mid via abcjs, optionally humanized)
 // =====================================================================
 
 export async function runMidi(config, songFolder, {
@@ -61,6 +61,7 @@ export async function runMidi(config, songFolder, {
 } = {}) {
     const abcPath = path.join(songFolder, 'score.abc');
     const midiPath = path.join(songFolder, 'score.mid');
+    const humanMidiPath = path.join(songFolder, 'score.human.mid');
 
     if (!fs.existsSync(abcPath)) {
         throw new Error(`Missing score.abc in ${songFolder}`);
@@ -105,11 +106,41 @@ export async function runMidi(config, songFolder, {
     if (!fs.existsSync(midiPath)) {
         throw new Error(`MIDI render did not produce ${midiPath}`);
     }
-    return { midiPath, abcPath, title, composer };
+
+    // Optional humanization: rewrite score.mid -> score.human.mid
+    const h = config.render.humanize;
+    if (h && h.enabled) {
+        const hArgs = [
+            path.join(root, 'scripts', 'humanize-midi.mjs'),
+            midiPath,
+            humanMidiPath,
+            '--timing-ms', String(h.timingMs),
+            '--velocity', String(h.velocity),
+            '--roll-ms', String(h.rollMs),
+            '--roll-order', h.rollOrder,
+            '--min-vel', String(h.minVel),
+            '--max-vel', String(h.maxVel),
+            '--seed', String(h.seed),
+        ];
+        await run('node', hArgs);
+
+        if (!fs.existsSync(humanMidiPath)) {
+            throw new Error(`humanize-midi did not produce ${humanMidiPath}`);
+        }
+    }
+
+    return {
+        midiPath,
+        humanMidiPath,
+        abcPath,
+        title,
+        composer,
+        humanized: Boolean(h && h.enabled),
+    };
 }
 
 // =====================================================================
-// render  (score.mid -> song.wav)
+// render  (score.mid or score.human.mid -> song.wav)
 // =====================================================================
 
 export async function runRender(config, songFolder, {
@@ -119,12 +150,22 @@ export async function runRender(config, songFolder, {
     keep,
 } = {}) {
     const root = projectRoot();
-    const midiPath = path.join(songFolder, 'score.mid');
-    const wavPath = path.join(songFolder, 'song.wav');
 
-    if (!fs.existsSync(midiPath)) {
+    // Prefer the humanized MIDI if it exists and humanize is enabled.
+    const h = config.render.humanize;
+    const humanMidiPath = path.join(songFolder, 'score.human.mid');
+    const cleanMidiPath = path.join(songFolder, 'score.mid');
+
+    let midiPath;
+    if (h && h.enabled && fs.existsSync(humanMidiPath)) {
+        midiPath = humanMidiPath;
+    } else if (fs.existsSync(cleanMidiPath)) {
+        midiPath = cleanMidiPath;
+    } else {
         throw new Error(`Missing score.mid in ${songFolder}`);
     }
+
+    const wavPath = path.join(songFolder, 'song.wav');
 
     const backend = config.render.backend ?? 'fluidsynth';
     const g = gain ?? config.render.gain;
@@ -134,7 +175,6 @@ export async function runRender(config, songFolder, {
         if (routing.length === 0) {
             throw new Error('render.vst3_routing is empty in config.yaml');
         }
-
         for (const r of routing) {
             if (!fs.existsSync(r.vst3)) {
                 throw new Error(`VST3 not found: ${r.vst3}`);
@@ -168,7 +208,7 @@ export async function runRender(config, songFolder, {
         return { wavPath, midiPath };
     }
 
-    // FluidSynth backend (default)
+    // FluidSynth backend
     const normMidi = path.join(songFolder, '.score.loud.mid');
     await run('node', [
         path.join(root, 'scripts', 'normalize-midi.mjs'),

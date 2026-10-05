@@ -161,7 +161,7 @@ console.log('=== SUMMARY ===');
 console.log(`Scanned ${trackNum} track(s).`);
 
 // Split melodic tracks into "single-channel" (melody voices) and
-// "multi-channel" (abc2midi's chord-following accompaniment). Only
+// "multi-channel" (abcjs's chord-following accompaniment). Only
 // single-channel tracks are compared for drift — accompaniment runs
 // on its own schedule and will always extend past the melody.
 const melodic = trackInfo.filter((t) => t.track > 0 && t.noteOns > 0);

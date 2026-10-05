@@ -23,8 +23,6 @@ export function loadConfig(configPathOverride) {
     const data = yaml.load(fs.readFileSync(configPath, 'utf8')) ?? {};
     const base = path.dirname(configPath);
 
-    // AI_API is required only by the lyrics stages. Individual stage runners
-    // read config.apiKey lazily; if it's missing they throw a clear error.
     const apiKey = process.env.AI_API ?? null;
 
     const lyricsRaw = data.lyrics ?? {};
@@ -32,6 +30,7 @@ export function loadConfig(configPathOverride) {
     const renderRaw = data.render ?? {};
     const pathsRaw = data.paths ?? {};
     const apiRaw = data.api ?? {};
+    const humanRaw = renderRaw.humanize ?? data.humanize ?? {};
 
     const writerModel = lyricsRaw.writer_model ?? 'openai/gpt-5.6-luna';
     const plannerModel = lyricsRaw.planner_model ?? writerModel;
@@ -77,10 +76,8 @@ export function loadConfig(configPathOverride) {
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
 
-            // WAV render backend: "fluidsynth" (default) or "vst3".
             backend: String(renderRaw.backend ?? 'fluidsynth').toLowerCase(),
 
-            // VST3 routing: array of { channels: [int], vst3: str, gain?: num }
             vst3Routing: Array.isArray(renderRaw.vst3_routing)
                 ? renderRaw.vst3_routing.map((r) => ({
                     channels: Array.isArray(r.channels) ? r.channels : [r.channels],
@@ -88,6 +85,17 @@ export function loadConfig(configPathOverride) {
                     gain: Number(r.gain ?? 1.0),
                 }))
                 : [],
+
+            humanize: {
+                enabled: Boolean(humanRaw.enabled ?? false),
+                timingMs: Number(humanRaw.timing_ms ?? 15),
+                velocity: Number(humanRaw.velocity ?? 8),
+                rollMs: Number(humanRaw.chord_roll_ms ?? 12),
+                rollOrder: String(humanRaw.roll_order ?? 'up').toLowerCase(),
+                minVel: Number(humanRaw.min_vel ?? 40),
+                maxVel: Number(humanRaw.max_vel ?? 115),
+                seed: Number(humanRaw.seed ?? 0),
+            },
 
             voicePrograms: {
                 melody: Number(voiceProgramsRaw.melody ?? 0),
@@ -115,7 +123,6 @@ export function loadConfig(configPathOverride) {
 
 /**
  * Assert that the config has everything a lyrics stage needs.
- * Called from Planner / SongWriter constructors.
  */
 export function requireApiKey(config) {
     if (!config.apiKey) {

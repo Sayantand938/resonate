@@ -39,28 +39,10 @@ render:
   composer: Sayantan
 
   # WAV render backend: "fluidsynth" (default) or "vst3".
-  #
-  # fluidsynth — renders score.mid through a SoundFont (GeneralUser-GS.sf2).
-  # vst3       — renders score.mid through one or more VST3 instruments,
-  #              routed by MIDI channel (requires Pedalboard / Python).
   backend: vst3
 
   # VST3 routing table. Each entry maps a set of MIDI channels to a VST3
   # instrument. Channels not listed are dropped from the render.
-  #
-  # Notes on paths:
-  #   - Some plugins (Audiolatry Grand Piano) load from the top-level .vst3
-  #     bundle folder.
-  #   - Others (Ample Sound) require the inner binary path with the full
-  #     Contents/x86_64-win/... nesting.
-  #
-  # gains are per-route multipliers used when summing the mixes. They
-  # compensate for the fact that different VST instruments have different
-  # output levels for the same MIDI velocity. Measured peaks on
-  # 2026-10-05-blue-light-on-the-wet-floor:
-  #   guitar route peak = 0.2793  →  gain 0.7  →  contributes 0.196
-  #   piano route peak  = 0.0606  →  gain 3.0  →  contributes 0.182
-  # This brings the two roughly level in the mix. Tune by ear.
   vst3_routing:
     - channels: [0, 1]
       vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
@@ -68,6 +50,29 @@ render:
     - channels: [2]
       vst3: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
       gain: 3.0
+
+  # Humanize: subtle timing jitter, velocity jitter, and chord roll added
+  # to the rendered MIDI before it goes to the audio backend.
+  #
+  # When enabled, runMidi writes score.human.mid (leaving score.mid as the
+  # clean abcjs output), and runRender prefers the humanized file. Toggle
+  # enabled:false to A/B against the mechanical version.
+  #
+  #   timing_ms       max timing jitter per note, ± ms         (5-30)
+  #   velocity        max velocity jitter per note, ±          (4-15)
+  #   chord_roll_ms   stagger between same-tick chord notes, ms (5-25)
+  #   roll_order      "up" (low→high) or "down" (high→low)
+  #   min_vel/max_vel velocity clamp range for the humanized notes
+  #   seed            0 = random each run; non-zero = deterministic
+  humanize:
+    enabled: true
+    timing_ms: 15
+    velocity: 8
+    chord_roll_ms: 12
+    roll_order: up
+    min_vel: 40
+    max_vel: 115
+    seed: 0
 
   # MIDI program numbers per role. Only used by the FluidSynth backend.
   # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar

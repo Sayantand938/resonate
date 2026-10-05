@@ -86,9 +86,9 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
  * Insert program_change events at the start of each non-conductor track,
  * one per channel that the track actually uses.
  *
- * This does NOT assume each track uses a single channel. abc2midi's
+ * This does NOT assume each track uses a single channel. abcjs's
  * chord-following accompaniment writes notes to two channels (typically
- * 2 and 3) so it can stagger chord-tone durations. We inject a program
+ * 0 and 2) so it can stagger chord-tone durations. We inject a program
  * change for every channel we see that has a configured program.
  *
  * @param {Buffer} midiBuffer
