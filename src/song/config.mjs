@@ -79,7 +79,15 @@ export function loadConfig(configPathOverride) {
 
             // WAV render backend: "fluidsynth" (default) or "vst3".
             backend: String(renderRaw.backend ?? 'fluidsynth').toLowerCase(),
-            vst3Path: renderRaw.vst3_path ?? null,
+
+            // VST3 routing: array of { channels: [int], vst3: str, gain?: num }
+            vst3Routing: Array.isArray(renderRaw.vst3_routing)
+                ? renderRaw.vst3_routing.map((r) => ({
+                    channels: Array.isArray(r.channels) ? r.channels : [r.channels],
+                    vst3: path.resolve(base, r.vst3 ?? ''),
+                    gain: Number(r.gain ?? 1.0),
+                }))
+                : [],
 
             voicePrograms: {
                 melody: Number(voiceProgramsRaw.melody ?? 0),

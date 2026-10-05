@@ -108,3 +108,10 @@ songs/**/yue2_debug_response.json
 songs/**/song-notabc.mid
 songs/**/score.normalized.abc
 songs/**/debug-normalized.abc
+# VST experiment scratch files
+test-vst.wav
+test-note.wav
+test-multi.wav
+test-guitar.wav
+vst-debug.log
+routes.json

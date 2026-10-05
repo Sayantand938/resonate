@@ -109,8 +109,9 @@ export async function runMidi(config, songFolder, {
 }
 
 // =====================================================================
-// render  (score.mid -> song.wav via FluidSynth + ffmpeg)
+// render  (score.mid -> song.wav)
 // =====================================================================
+
 export async function runRender(config, songFolder, {
     soundfont,
     gain,
@@ -129,23 +130,35 @@ export async function runRender(config, songFolder, {
     const g = gain ?? config.render.gain;
 
     if (backend === 'vst3') {
-        // VST3 backend — render through a plugin
-        const vstPath = config.render.vst3Path;
-        if (!vstPath) {
-            throw new Error('render.vst3_path is not set in config.yaml');
+        const routing = config.render.vst3Routing ?? [];
+        if (routing.length === 0) {
+            throw new Error('render.vst3_routing is empty in config.yaml');
         }
-        if (!fs.existsSync(vstPath)) {
-            throw new Error(`VST3 not found: ${vstPath}`);
+
+        for (const r of routing) {
+            if (!fs.existsSync(r.vst3)) {
+                throw new Error(`VST3 not found: ${r.vst3}`);
+            }
         }
+
+        const routesJson = JSON.stringify(
+            routing.map((r) => ({
+                channels: r.channels,
+                vst3: r.vst3,
+                gain: r.gain ?? 1.0,
+            }))
+        );
 
         const args = [
             path.join(root, 'scripts', 'midi2wav-vst.mjs'),
             midiPath,
             wavPath,
-            '--vst', vstPath,
+            '--routes', routesJson,
+            '--normalize',
         ];
-        if (g != null) args.push('--gain', String(g));
-        if (config.render.sampleRate) args.push('--sr', String(config.render.sampleRate));
+        if (config.render.sampleRate) {
+            args.push('--sr', String(config.render.sampleRate));
+        }
 
         await run('node', args);
 
@@ -186,6 +199,7 @@ export async function runRender(config, songFolder, {
     }
     return { wavPath, midiPath };
 }
+
 // =====================================================================
 // Helpers
 // =====================================================================

@@ -27,11 +27,8 @@ score:
   num_inference_steps: 32
   timeout_seconds: 600
 
-  # Seed handling for YuE2.
-  #   fixed   — always use `seed` below (reproducible across runs)
-  #   random  — fresh random seed on every call (never reproducible)
   seed_mode: random
-  seed: 1234        # unused when seed_mode is "random", kept as a fallback
+  seed: 1234
 
 render:
   soundfont: null
@@ -44,33 +41,38 @@ render:
   # WAV render backend: "fluidsynth" (default) or "vst3".
   #
   # fluidsynth — renders score.mid through a SoundFont (GeneralUser-GS.sf2).
-  #              Fast, no plugin loading, works with the existing pipeline.
-  #              Ignores vst3_path. Honors `soundfont`, `lufs`.
-  #
-  # vst3       — renders score.mid through a VST3 instrument plugin.
-  #              Set `vst3_path` below to the .vst3 bundle you want to use.
-  #              Requires `pnpm install nvst3-host`.
-  #              Ignores `soundfont` and `lufs`; the plugin's own patch
-  #              determines the sound.
+  # vst3       — renders score.mid through one or more VST3 instruments,
+  #              routed by MIDI channel (requires Pedalboard / Python).
   backend: vst3
-  vst3_path: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
 
-  # MIDI program numbers per role.
+  # VST3 routing table. Each entry maps a set of MIDI channels to a VST3
+  # instrument. Channels not listed are dropped from the render.
+  #
+  # Notes on paths:
+  #   - Some plugins (Audiolatry Grand Piano) load from the top-level .vst3
+  #     bundle folder.
+  #   - Others (Ample Sound) require the inner binary path with the full
+  #     Contents/x86_64-win/... nesting.
+  #
+  # gains are per-route multipliers used when summing the mixes. They
+  # compensate for the fact that different VST instruments have different
+  # output levels for the same MIDI velocity. Measured peaks on
+  # 2026-10-05-blue-light-on-the-wet-floor:
+  #   guitar route peak = 0.2793  →  gain 0.7  →  contributes 0.196
+  #   piano route peak  = 0.0606  →  gain 3.0  →  contributes 0.182
+  # This brings the two roughly level in the mix. Tune by ear.
+  vst3_routing:
+    - channels: [0, 1]
+      vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+      gain: 0.9
+    - channels: [2]
+      vst3: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
+      gain: 3.0
+
+  # MIDI program numbers per role. Only used by the FluidSynth backend.
   # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar
-  # 32=Acoustic Bass        33=Fingered Bass  34=Picked Bass    48=Strings
-  #
-  # channels:
-  #   ch 0  melody voice (V: Vocal)
-  #   ch 1  ins voice    (V: Ins)
-  #   ch 2  accompaniment (abcjs-generated from chord symbols)
-  #   ch 3  reserved for future use
-  #
-  # Note: these programs are honored by the FluidSynth backend. The VST3
-  # backend loads a single plugin for all channels, so programs are ignored
-  # in that mode (see scripts/midi2wav-vst.mjs). A future revision can route
-  # per-channel to multiple plugin instances.
   voice_programs:
-    melody:         24    # V: Vocal  → Nylon String Guitar (lead)
-    ins:             0    # V: Ins    → Acoustic Grand Piano (counter-melody)
-    accompaniment:   0    # ch 2      → Acoustic Grand Piano
-    accompaniment2:  0    # ch 3      → Acoustic Grand Piano
+    melody:         24
+    ins:             0
+    accompaniment:   0
+    accompaniment2:  0
