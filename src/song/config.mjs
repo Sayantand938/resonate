@@ -77,10 +77,11 @@ export function loadConfig(configPathOverride) {
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
 
+            // MIDI engine selection
+            abcEngine: renderRaw.abc_engine ?? 'abcjs',
+            abc2midiPath: renderRaw.abc2midi_path ?? 'C:/Program Files/abcmidi/abc2midi.exe',
+
             // General MIDI program numbers per voice role.
-            // abcjs assigns channels as: 0 = V: Vocal, 1 = V: Ins,
-            // 2 = auto-expanded chord symbols. See config.yaml for
-            // common program numbers.
             voicePrograms: {
                 melody: Number(voiceProgramsRaw.melody ?? 0),
                 ins: Number(voiceProgramsRaw.ins ?? 0),

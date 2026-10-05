@@ -1,48 +1,80 @@
 #!/usr/bin/env node
-// scripts/abc2midi.mjs — ABC file → MIDI file, via abcjs.
-// Called internally by the `midi` stage. Not a public CLI.
+// scripts/abc2midi.mjs — ABC file → MIDI file.
+// Dispatches to either abcjs (in-process) or abc2midi (external binary).
+//
+// Usage:
+//   node scripts/abc2midi.mjs <in.abc> <out.mid>
+//     [--engine abcjs|abc2midi]
+//     [--programs c0:p0,c1:p1]              (per-channel, abcjs)
+//     [--voice-programs Vocal:24,Ins:24]    (per-voice, abc2midi)
+//     [--tempo BPM] [--title TEXT] [--composer TEXT]
+//     [--program N] [--abc2midi <path>]
 
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-    injectTitleAndComposer,
-    injectPrograms,
-} from '../src/song/midi-meta.mjs';
-import { remapChannels } from '../src/song/midi-remap.mjs';
-
-if (typeof globalThis.window === 'undefined') {
-    globalThis.window = globalThis;
-}
-
-const abcjs = (await import('abcjs')).default;
+import { renderWithAbcjs } from './abcjs-engine.mjs';
+import { renderWithAbc2Midi } from './abc2midi-engine.mjs';
 
 function parseArgs(argv) {
     const out = {
         positional: [],
-        program: null,
+        engine: 'abcjs',
         programs: null,
+        voicePrograms: null,
         tempo: null,
         title: null,
         composer: null,
+        program: null,
+        abc2midiPath: 'C:/Program Files/abcmidi/abc2midi.exe',
     };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
-        if (a === '--program') out.program = Number(argv[++i]);
+        if (a === '--engine') out.engine = argv[++i];
+        else if (a === '--program') out.program = Number(argv[++i]);
         else if (a === '--programs') out.programs = argv[++i];
+        else if (a === '--voice-programs') out.voicePrograms = argv[++i];
         else if (a === '--tempo') out.tempo = Number(argv[++i]);
         else if (a === '--title') out.title = argv[++i];
         else if (a === '--composer') out.composer = argv[++i];
+        else if (a === '--abc2midi') out.abc2midiPath = argv[++i];
         else out.positional.push(a);
     }
     return out;
 }
 
-const { positional, program, programs, tempo, title, composer } =
-    parseArgs(process.argv.slice(2));
-const [inPath, outPath] = positional;
+function parseProgramsByChannel(str) {
+    const map = {};
+    if (!str) return map;
+    if (str.includes(':')) {
+        for (const pair of str.split(',')) {
+            const [ch, prog] = pair.split(':').map((s) => Number(s.trim()));
+            if (Number.isInteger(ch) && Number.isInteger(prog)) map[ch] = prog;
+        }
+    } else {
+        str.split(',').forEach((p, i) => {
+            const prog = Number(p.trim());
+            if (Number.isInteger(prog)) map[i] = prog;
+        });
+    }
+    return map;
+}
+
+function parseProgramsByVoice(str) {
+    const map = {};
+    if (!str) return map;
+    for (const pair of str.split(',')) {
+        const [name, prog] = pair.split(':').map((s) => s.trim());
+        const p = Number(prog);
+        if (name && Number.isInteger(p)) map[name] = p;
+    }
+    return map;
+}
+
+const opts = parseArgs(process.argv.slice(2));
+const [inPath, outPath] = opts.positional;
 
 if (!inPath || !outPath) {
-    console.error('Usage: node scripts/abc2midi.mjs <in.abc> <out.mid> [--program N | --programs c0,c1,c2] [--tempo BPM] [--title TEXT] [--composer TEXT]');
+    console.error('Usage: node scripts/abc2midi.mjs <in.abc> <out.mid> [--engine abcjs|abc2midi] [--programs c0:p0,c1:p1] [--voice-programs Vocal:24,Ins:24] [--tempo BPM] [--title TEXT] [--composer TEXT] [--program N] [--abc2midi <path>]');
     process.exit(1);
 }
 if (!fs.existsSync(inPath)) {
@@ -50,84 +82,48 @@ if (!fs.existsSync(inPath)) {
     process.exit(1);
 }
 
-if (typeof abcjs.synth?.getMidiFile !== 'function') {
-    console.error('abcjs.synth.getMidiFile is not available.');
-    process.exit(1);
-}
+fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
-let source = fs.readFileSync(inPath, 'utf8');
+const programsByChannel = parseProgramsByChannel(opts.programs);
+const programsByVoice = parseProgramsByVoice(opts.voicePrograms);
 
-if (tempo != null) {
-    if (/^Q:/m.test(source)) {
-        source = source.replace(/^Q:.*$/m, `Q:1/4=${tempo}`);
+try {
+    if (opts.engine === 'abc2midi') {
+        await renderWithAbc2Midi({
+            abcPath: inPath,
+            outMidiPath: outPath,
+            programsByVoiceName: programsByVoice,
+            abc2midiPath: opts.abc2midiPath,
+        });
     } else {
-        source = source.replace(/^(X:[^\n]*\n)/m, `$1Q:1/4=${tempo}\n`);
-    }
-}
-
-const midiOptions = {};
-if (Number.isInteger(program)) midiOptions.program = program;
-
-const htmlArray = abcjs.synth.getMidiFile(source, midiOptions);
-if (!Array.isArray(htmlArray) || htmlArray.length === 0) {
-    console.error('abcjs did not return any MIDI.');
-    process.exit(1);
-}
-
-let midiBuffer = extractMidiFromHtml(htmlArray[0]);
-
-// 1. Metadata (title + composer) into track 0
-midiBuffer = injectTitleAndComposer(midiBuffer, { title, composer });
-
-// 2. Remap channels: each non-conductor track gets its own dedicated channel.
-//    Track 1 → ch 0, track 2 → ch 1, track 3 → ch 2, ...
-//    This is required because abcjs reuses channel 0 across multiple tracks.
-midiBuffer = remapChannels(midiBuffer, { 1: 0, 2: 1, 3: 2, 4: 3 });
-
-// 3. Per-channel program changes
-if (programs) {
-    const map = {};
-    if (programs.includes(':')) {
-        for (const pair of programs.split(',')) {
-            const [ch, prog] = pair.split(':').map((s) => Number(s.trim()));
-            if (Number.isInteger(ch) && Number.isInteger(prog)) {
-                map[ch] = prog;
-            }
-        }
-    } else {
-        programs.split(',').forEach((p, i) => {
-            const prog = Number(p.trim());
-            if (Number.isInteger(prog)) map[i] = prog;
+        await renderWithAbcjs({
+            abcPath: inPath,
+            outMidiPath: outPath,
+            programsByChannel,
+            title: opts.title,
+            composer: opts.composer,
+            tempo: opts.tempo,
+            program: opts.program,
         });
     }
-    midiBuffer = injectPrograms(midiBuffer, map);
-}
-
-fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, midiBuffer);
-console.error(`Wrote ${outPath} (${midiBuffer.length} bytes)`);
-
-// ---------------------------------------------------------------------
-
-function extractMidiFromHtml(html) {
-    const m = html.match(/href\s*=\s*"data:audio\/midi,([^"]*)"/i);
-    if (!m) throw new Error('Could not find MIDI data URL in abcjs output.');
-    return percentDecodeToBuffer(m[1]);
-}
-
-function percentDecodeToBuffer(str) {
-    const bytes = [];
-    for (let i = 0; i < str.length; i++) {
-        const ch = str[i];
-        if (ch === '%' && i + 2 < str.length + 1) {
-            const hex = str.slice(i + 1, i + 3);
-            if (/^[0-9a-fA-F]{2}$/.test(hex)) {
-                bytes.push(parseInt(hex, 16));
-                i += 2;
-                continue;
-            }
-        }
-        bytes.push(ch.charCodeAt(0) & 0xff);
+} catch (err) {
+    // Fallback: if abc2midi failed, try abcjs.
+    if (opts.engine === 'abc2midi') {
+        console.error(`abc2midi failed, falling back to abcjs:`);
+        console.error('  ' + err.message.split('\n')[0]);
+        await renderWithAbcjs({
+            abcPath: inPath,
+            outMidiPath: outPath,
+            programsByChannel,
+            title: opts.title,
+            composer: opts.composer,
+            tempo: opts.tempo,
+            program: opts.program,
+        });
+    } else {
+        console.error('Error:', err.message);
+        process.exit(1);
     }
-    return Buffer.from(bytes);
 }
+
+console.error(`Wrote ${outPath} (${fs.statSync(outPath).size} bytes)`);

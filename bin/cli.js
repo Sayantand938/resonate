@@ -49,12 +49,12 @@ function printSongSummary(result, { showPlan = false } = {}) {
     console.log(`  ${result.folder}`);
     if (showPlan && result.planPath) console.log(`  plan  → ${path.basename(result.planPath)}`);
     if (result.abcPath) console.log(`  abc   → ${path.basename(result.abcPath)}`);
-    if (result.midiPath) console.log(`  midi  → ${path.basename(result.midiPath)}`);
+    if (result.midiPath) console.log(`  midi  → ${path.basename(result.midiPath)}${result.engine ? `  (${result.engine})` : ''}`);
     if (result.wavPath) console.log(`  wav   → ${path.basename(result.wavPath)}`);
 }
 
 // =====================================================================
-// song
+// song — full pipeline
 // =====================================================================
 
 program
@@ -63,8 +63,8 @@ program
     .option('-t, --theme <text>', 'theme seed')
     .option('-g, --genre <text>', 'genre seed')
     .option('-m, --mood <text>', 'mood seed')
-    .option('--dry-score', 'skip YuE2; use a placeholder score (offline)')
     .option('--keep', 'keep intermediate files')
+    .option('--engine <name>', 'MIDI engine: abcjs or abc2midi (overrides config)')
     .action(async (opts) => {
         const config = loadConfig();
 
@@ -73,8 +73,8 @@ program
                 theme: opts.theme,
                 genre: opts.genre,
                 mood: opts.mood,
-                dryScore: Boolean(opts.dryScore),
                 keep: Boolean(opts.keep),
+                engine: opts.engine,
             })
         );
 
@@ -140,14 +140,12 @@ program
 program
     .command('score <songFolder>')
     .description('Generate score.abc from song.md using YuE2')
-    .option('--dry-run', 'write a placeholder ABC without calling YuE2')
-    .action(async (songFolderArg, opts) => {
+    .action(async (songFolderArg) => {
         const config = loadConfig();
         const folder = resolveSongFolder(config, songFolderArg);
-        const label = opts.dryRun ? 'Scoring (placeholder)' : 'Scoring with YuE2';
 
-        const result = await step(label, () =>
-            runScore(config, folder, { dryRun: Boolean(opts.dryRun) })
+        const result = await step('Scoring with YuE2', () =>
+            runScore(config, folder)
         );
 
         console.log(`\n  ${result.abcPath}\n`);
@@ -159,11 +157,12 @@ program
 
 program
     .command('midi <songFolder>')
-    .description('Convert score.abc → score.mid via abcjs')
+    .description('Convert score.abc → score.mid via abcjs or abc2midi')
     .option('-p, --program <n>', 'override GM program (0-127)', parseInt)
     .option('-t, --tempo <bpm>', 'override tempo (BPM)', parseInt)
     .option('--title <text>', 'score title (default: from song.md)')
     .option('--composer <text>', 'composer (default: from config.yaml)')
+    .option('--engine <name>', 'MIDI engine: abcjs or abc2midi (overrides config)')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
         const folder = resolveSongFolder(config, songFolderArg);
@@ -174,10 +173,13 @@ program
                 tempo: opts.tempo,
                 title: opts.title,
                 composer: opts.composer,
+                engine: opts.engine,
             })
         );
 
-        console.log(`\n  ${result.midiPath}\n`);
+        console.log(`\n  ${result.midiPath}`);
+        if (result.engine) console.log(`  engine: ${result.engine}`);
+        console.log('');
     });
 
 // =====================================================================

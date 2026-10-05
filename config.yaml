@@ -36,6 +36,13 @@ render:
   timeout_seconds: 300
   composer: Sayantan
 
+  # MIDI engine: "abcjs" (in-process, default) or "abc2midi" (external binary).
+  # abc2midi is more reliable for ABCs with named voices; abcjs is more
+  # forgiving of ABC syntax. If abc2midi fails, the pipeline automatically
+  # falls back to abcjs.
+  abc_engine: abcjs
+  abc2midi_path: "C:/Program Files/abcmidi/abc2midi.exe"
+
   # MIDI program numbers per role. See General MIDI spec for the full list.
   # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar
   # 32=Acoustic Bass        33=Fingered Bass  34=Picked Bass    48=Strings

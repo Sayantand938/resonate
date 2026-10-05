@@ -1,0 +1,32 @@
+{
+  "title": "The Machine Learned My Tune",
+  "genre": "indie pop with electronic folk accents",
+  "mood": "curious, hopeful, quietly triumphant",
+  "theme": "A fragile melody becomes real when someone risks sharing its imperfect first draft with a machine.",
+  "story": "Late at night, a songwriter types a rough tune in ABC notation while a terminal blinks beside a cold cup of coffee. The first conversion fails, scattering wrong notes across the speakers and making the songwriter doubt the song itself. After one small correction, the melody plays clearly, turning lines of plain text into something alive. By sunrise, the songwriter exports the file and steps outside, carrying the proof that an unfinished idea can still find its voice.",
+  "setting": "A cramped apartment music corner at 2:17 a.m., lit by a blue monitor and a desk lamp, with rain on the window, warm coffee gone cold, and a cheap keyboard connected by one loose cable.",
+  "perspective": "First person, present tense, as the songwriter narrates the experiment in real time.",
+  "motifs": [
+    "blinking terminal cursor",
+    "cold coffee",
+    "rain-streaked window",
+    "wrong notes",
+    "loose MIDI cable",
+    "sunrise export bar"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop with electronic folk accents, 108 BPM, curious and hopeful, intimate clear lead vocal with a slightly breathless delivery, warm electric piano, plucked acoustic guitar, soft analog synth, melodic bass, restrained live drums. Build from a close bedroom-demo feel into a bright communal final chorus. Polished lo-fi texture with gentle tape saturation.",
+  "": ""
+}

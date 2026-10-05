@@ -44,13 +44,13 @@ export async function runWrite(config, plan) {
 // score  (song.md -> score.abc via YuE2)
 // =====================================================================
 
-export async function runScore(config, songFolder, { dryRun = false } = {}) {
+export async function runScore(config, songFolder) {
     const scorer = new SongScorer(config);
-    return scorer.score(songFolder, { dryRun });
+    return scorer.score(songFolder);
 }
 
 // =====================================================================
-// midi  (score.abc -> score.mid via abcjs)
+// midi  (score.abc -> score.mid via abcjs or abc2midi)
 // =====================================================================
 
 export async function runMidi(config, songFolder, {
@@ -58,6 +58,7 @@ export async function runMidi(config, songFolder, {
     tempo,
     title,
     composer,
+    engine,   // override config default: 'abcjs' | 'abc2midi'
 } = {}) {
     const abcPath = path.join(songFolder, 'score.abc');
     const midiPath = path.join(songFolder, 'score.mid');
@@ -75,15 +76,11 @@ export async function runMidi(config, songFolder, {
             } catch { /* ignore */ }
         }
     }
-    if (composer == null) {
-        composer = config.render.composer ?? null;
-    }
+    if (composer == null) composer = config.render.composer ?? null;
 
-    // Build the channel→program map from config.render.voicePrograms.
-    // abcjs produces this channel layout for typical ABC input:
-    //   channel 0 → V: Vocal (melody)
-    //   channel 1 → V: Ins   (countermelody)
-    //   channel 2 → auto-expanded chord symbols (chords)
+    const chosenEngine = engine ?? config.render.abcEngine ?? 'abcjs';
+
+    // Per-channel map for abcjs.
     const vp = config.render.voicePrograms ?? {};
     const programMap = {
         0: vp.melody ?? 0,
@@ -94,20 +91,31 @@ export async function runMidi(config, songFolder, {
         .map(([ch, prog]) => `${ch}:${prog}`)
         .join(',');
 
+    // Per-voice map for abc2midi.
+    const voiceProgramStr = [
+        `Vocal:${vp.melody ?? 0}`,
+        `Ins:${vp.ins ?? 0}`,
+    ].join(',');
+
     const root = projectRoot();
     const args = [path.join(root, 'scripts', 'abc2midi.mjs'), abcPath, midiPath];
+    args.push('--engine', chosenEngine);
     if (program != null) args.push('--program', String(program));
     if (tempo != null) args.push('--tempo', String(tempo));
     if (title != null) args.push('--title', String(title));
     if (composer != null) args.push('--composer', String(composer));
     args.push('--programs', programsStr);
+    args.push('--voice-programs', voiceProgramStr);
+    if (config.render.abc2midiPath) {
+        args.push('--abc2midi', config.render.abc2midiPath);
+    }
 
     await run('node', args);
 
     if (!fs.existsSync(midiPath)) {
-        throw new Error(`abc2midi did not produce ${midiPath}`);
+        throw new Error(`MIDI render did not produce ${midiPath}`);
     }
-    return { midiPath, abcPath, title, composer };
+    return { midiPath, abcPath, title, composer, engine: chosenEngine };
 }
 
 // =====================================================================
@@ -166,13 +174,13 @@ export async function runRender(config, songFolder, {
 
 export async function runSong(config, {
     theme, genre, mood,
-    dryScore = false,
     keep = false,
+    engine,
 } = {}) {
     const plan = await runPlan(config, { theme, genre, mood });
     const writer = await runWrite(config, plan);
-    await runScore(config, writer.folder, { dryRun: dryScore });
-    const midi = await runMidi(config, writer.folder);
+    await runScore(config, writer.folder);
+    const midi = await runMidi(config, writer.folder, { engine });
     const render = await runRender(config, writer.folder, { keep });
 
     return {
@@ -180,6 +188,7 @@ export async function runSong(config, {
         abcPath: path.join(writer.folder, 'score.abc'),
         midiPath: midi.midiPath,
         wavPath: render.wavPath,
+        engine: midi.engine,
     };
 }
 

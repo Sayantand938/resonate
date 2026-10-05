@@ -8,7 +8,7 @@ export class SongScorer {
         this.config = config;
     }
 
-    async score(folder, { dryRun = false } = {}) {
+    async score(folder) {
         const songPath = path.join(folder, 'song.md');
         if (!fs.existsSync(songPath)) {
             throw new Error(`Missing song.md in ${folder}`);
@@ -19,9 +19,7 @@ export class SongScorer {
             throw new Error(`${songPath} missing # TITLE or # LYRICS.`);
         }
 
-        const abcText = dryRun
-            ? this._placeholderAbc(parsed)
-            : await this._callYue2(parsed);
+        const abcText = await this._callYue2(parsed);
 
         const abcPath = path.join(folder, 'score.abc');
         fs.writeFileSync(abcPath, abcText, 'utf8');
@@ -45,27 +43,5 @@ export class SongScorer {
             lyrics: parsed.lyrics,
             seed: sc.seed,
         });
-    }
-
-    _placeholderAbc(parsed) {
-        const lines = [
-            'X:1',
-            `T:${parsed.title}`,
-            'M:4/4',
-            'L:1/8',
-            'Q:1/4=112',
-            'K:C',
-            '',
-            `%%${parsed.style.slice(0, 120)}`,
-            '',
-        ];
-        for (const line of parsed.lyrics.split(/\r?\n/)) {
-            const s = line.trim();
-            if (!s) continue;
-            if (s.startsWith('[') && s.endsWith(']')) {
-                lines.push(`% ${s}`, 'z8 |');
-            }
-        }
-        return lines.join('\n') + '\n';
     }
 }
