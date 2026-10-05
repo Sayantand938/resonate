@@ -50,7 +50,7 @@ export async function runScore(config, songFolder) {
 }
 
 // =====================================================================
-// midi  (score.abc -> score.mid via abcjs or abc2midi)
+// midi  (score.abc -> score.mid via abcjs)
 // =====================================================================
 
 export async function runMidi(config, songFolder, {
@@ -58,7 +58,6 @@ export async function runMidi(config, songFolder, {
     tempo,
     title,
     composer,
-    engine,
 } = {}) {
     const abcPath = path.join(songFolder, 'score.abc');
     const midiPath = path.join(songFolder, 'score.mid');
@@ -73,47 +72,40 @@ export async function runMidi(config, songFolder, {
             try {
                 const parsed = parseSongMarkdown(fs.readFileSync(songPath, 'utf8'));
                 if (parsed.title) title = parsed.title;
-            } catch { /* ignore */ }
+            } catch (err) {
+                console.error(
+                    `[warn] could not read title from ${songPath}: ${err.message}`
+                );
+            }
         }
     }
     if (composer == null) composer = config.render.composer ?? null;
-
-    const chosenEngine = engine ?? config.render.abcEngine ?? 'abcjs';
 
     const vp = config.render.voicePrograms ?? {};
     const programMap = {
         0: vp.melody ?? 0,
         1: vp.ins ?? 0,
-        2: vp.chords ?? 0,
+        2: vp.accompaniment ?? 0,
+        3: vp.accompaniment2 ?? vp.accompaniment ?? 0,
     };
     const programsStr = Object.entries(programMap)
         .map(([ch, prog]) => `${ch}:${prog}`)
         .join(',');
 
-    const voiceProgramStr = [
-        `Vocal:${vp.melody ?? 0}`,
-        `Ins:${vp.ins ?? 0}`,
-    ].join(',');
-
     const root = projectRoot();
-    const args = [path.join(root, 'scripts', 'abc2midi.mjs'), abcPath, midiPath];
-    args.push('--engine', chosenEngine);
+    const args = [path.join(root, 'scripts', 'abc-render.mjs'), abcPath, midiPath];
     if (program != null) args.push('--program', String(program));
     if (tempo != null) args.push('--tempo', String(tempo));
     if (title != null) args.push('--title', String(title));
     if (composer != null) args.push('--composer', String(composer));
     args.push('--programs', programsStr);
-    args.push('--voice-programs', voiceProgramStr);
-    if (config.render.abc2midiPath) {
-        args.push('--abc2midi', config.render.abc2midiPath);
-    }
 
     await run('node', args);
 
     if (!fs.existsSync(midiPath)) {
         throw new Error(`MIDI render did not produce ${midiPath}`);
     }
-    return { midiPath, abcPath, title, composer, engine: chosenEngine };
+    return { midiPath, abcPath, title, composer };
 }
 
 // =====================================================================
@@ -158,7 +150,7 @@ export async function runRender(config, songFolder, {
     await run('node', args);
 
     if (!keep) {
-        try { fs.unlinkSync(normMidi); } catch { }
+        try { fs.unlinkSync(normMidi); } catch { /* ignore */ }
     }
     if (!fs.existsSync(wavPath)) {
         throw new Error(`midi2wav did not produce ${wavPath}`);

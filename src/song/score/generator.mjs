@@ -19,7 +19,8 @@ export class SongScorer {
             throw new Error(`${songPath} missing # TITLE or # LYRICS.`);
         }
 
-        const abcText = await this._callYue2(parsed);
+        const seed = this._resolveSeed();
+        const abcText = await this._callYue2(parsed, seed);
 
         const abcPath = path.join(folder, 'score.abc');
         fs.writeFileSync(abcPath, abcText, 'utf8');
@@ -29,10 +30,29 @@ export class SongScorer {
             folder,
             abcPath,
             abcText,
+            seed,
         };
     }
 
-    async _callYue2(parsed) {
+    /**
+     * Pick a seed for this YuE2 call.
+     *
+     *   random  → fresh 31-bit integer on every call
+     *   fixed   → config.score.seed, used for every song
+     *
+     * In "random" mode the seed is ephemeral — it's not written anywhere,
+     * so a re-run of the same song produces a different composition. If
+     * you want to keep a random result, keep the generated score.abc.
+     */
+    _resolveSeed() {
+        const sc = this.config.score;
+        if (sc.seedMode === 'random') {
+            return Math.floor(Math.random() * 2 ** 31);
+        }
+        return sc.seed;
+    }
+
+    async _callYue2(parsed, seed) {
         const sc = this.config.score;
         if (sc.provider !== 'yue2') {
             throw new Error(`Unknown score provider: ${sc.provider}`);
@@ -41,7 +61,7 @@ export class SongScorer {
         return client.generateAbc({
             style: parsed.style,
             lyrics: parsed.lyrics,
-            seed: sc.seed,
+            seed,
         });
     }
 }

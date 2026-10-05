@@ -8,6 +8,8 @@ const REQUIRED_STRINGS = [
 
 const REQUIRED_ARRAYS = ['motifs', 'structure'];
 
+const SECTION_LABEL_RE = /^\[.+\]$/;
+
 export function normalizePlan(raw) {
     if (!raw || typeof raw !== 'object') {
         throw new Error('Plan is not an object.');
@@ -24,6 +26,17 @@ export function normalizePlan(raw) {
     for (const k of REQUIRED_ARRAYS) {
         if (!Array.isArray(out[k])) out[k] = [];
         out[k] = out[k].map((s) => String(s).trim()).filter(Boolean);
+    }
+
+    // Soft validation: warn if structure labels don't look like [Section].
+    for (const label of out.structure) {
+        if (!SECTION_LABEL_RE.test(label)) {
+            console.error(
+                `[warn] plan.structure entry "${label}" does not look like a ` +
+                `Suno-style section label (e.g. "[Verse 1]"). Continuing anyway.`
+            );
+            break;
+        }
     }
 
     return out;

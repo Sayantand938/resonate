@@ -101,3 +101,10 @@ songs/**/convert.json
 songs/**/*.bak
 songs/**/score-meta.mid
 songs/**/score.pdf
+
+# Debug / scratch files from pipeline investigations.
+yue2_debug_response.json
+songs/**/yue2_debug_response.json
+songs/**/song-notabc.mid
+songs/**/score.normalized.abc
+songs/**/debug-normalized.abc

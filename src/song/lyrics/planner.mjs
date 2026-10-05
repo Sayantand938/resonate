@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import OpenAI from 'openai';
 import { normalizePlan } from './models.mjs';
+import { requireApiKey } from '../config.mjs';
 
 export class Planner {
     constructor(config) {
+        requireApiKey(config);
         this.config = config;
         this.client = new OpenAI({
             apiKey: config.apiKey,

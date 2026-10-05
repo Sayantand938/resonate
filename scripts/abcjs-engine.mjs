@@ -2,6 +2,7 @@
 // Render an ABC file to MIDI using abcjs (in-process).
 
 import fs from 'node:fs';
+import path from 'node:path';
 import {
     injectTitleAndComposer,
     injectPrograms,
@@ -61,21 +62,96 @@ export async function renderWithAbcjs({
 
     let midiBuffer = extractMidiFromHtml(htmlArray[0]);
     midiBuffer = injectTitleAndComposer(midiBuffer, { title, composer });
-    midiBuffer = remapChannels(midiBuffer, { 1: 0, 2: 1, 3: 2, 4: 3 });
+
+    // Derive the track → channel remap from the ABC source and the MIDI
+    // buffer abcjs produced. abcjs emits track 0 as conductor, tracks 1..N
+    // for the named voices, and — if the ABC has chord symbols — a final
+    // track for auto-generated accompaniment. That accompaniment uses
+    // channels 0 and 2 by default, which collides with the melody voice.
+    // We remap every track to its own dedicated channel.
+    const trackToChannel = deriveTrackToChannelMap(source, midiBuffer);
+    if (Object.keys(trackToChannel).length > 0) {
+        midiBuffer = remapChannels(midiBuffer, trackToChannel);
+    }
 
     if (Object.keys(programsByChannel).length) {
         midiBuffer = injectPrograms(midiBuffer, programsByChannel);
     }
 
-    fs.mkdirSync(require_path_dir(outMidiPath), { recursive: true });
+    fs.mkdirSync(path.dirname(outMidiPath), { recursive: true });
     fs.writeFileSync(outMidiPath, midiBuffer);
     return { midiPath: outMidiPath };
 }
 
 // Helpers --------------------------------------------------------------
 
-import path from 'node:path';
-function require_path_dir(p) { return path.dirname(p); }
+/**
+ * Build the { trackIndex → channel } map for the given ABC source and
+ * the MIDI buffer abcjs produced from it.
+ *
+ * Track 0: conductor — never remapped.
+ * Tracks 1..N: named voices, in order of first appearance. Each gets
+ *   channel 0..N-1.
+ * Track N+1 (if present): abcjs's auto-generated accompaniment. Gets
+ *   channel N — the next free channel.
+ *
+ * @param {string} abcSource
+ * @param {Buffer} midiBuffer
+ * @returns {Object<number, number>}
+ */
+function deriveTrackToChannelMap(abcSource, midiBuffer) {
+    const seen = new Set();
+    const order = [];
+
+    for (const rawLine of String(abcSource).split(/\r?\n/)) {
+        const m = rawLine.match(/^\s*V:\s*([^\s\[\]]+)/);
+        if (!m) continue;
+        const name = m[1];
+        if (seen.has(name)) continue;
+        seen.add(name);
+        order.push(name);
+    }
+
+    const voiceCount = order.length;
+    const midiTrackCount = countMidiTracks(midiBuffer);
+    const hasAccompaniment = midiTrackCount > voiceCount + 1;
+
+    const map = {};
+    const maxChannels = 16;
+
+    const usableVoices = Math.min(voiceCount, maxChannels);
+    if (voiceCount > maxChannels) {
+        console.error(
+            `[warn] abcjs-engine: ${voiceCount} voices in ABC, but MIDI ` +
+            `has only ${maxChannels} channels. Voices beyond ${maxChannels} ` +
+            `will share channels with earlier voices.`
+        );
+    }
+    for (let i = 0; i < usableVoices; i++) {
+        map[i + 1] = i;
+    }
+
+    if (hasAccompaniment) {
+        const accompTrackIdx = voiceCount + 1;
+        const accompChannel = voiceCount;
+        if (accompChannel < maxChannels) {
+            map[accompTrackIdx] = accompChannel;
+        } else {
+            console.error(
+                `[warn] abcjs-engine: no free channel for accompaniment; ` +
+                `leaving it on its original channels (may collide).`
+            );
+        }
+    }
+
+    return map;
+}
+
+function countMidiTracks(midiBuffer) {
+    if (midiBuffer.length < 14) return 0;
+    if (midiBuffer.toString('ascii', 0, 4) !== 'MThd') return 0;
+    return midiBuffer.readUInt16BE(10);
+}
 
 function extractMidiFromHtml(html) {
     const m = html.match(/href\s*=\s*"data:audio\/midi,([^"]*)"/i);

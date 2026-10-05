@@ -3,10 +3,12 @@ import path from 'node:path';
 import OpenAI from 'openai';
 import { parseSongMarkdown } from './parser.mjs';
 import { planToPromptBlock } from './models.mjs';
+import { requireApiKey } from '../config.mjs';
 import { slugify, songFolderName } from '../../util.mjs';
 
 export class SongWriter {
     constructor(config) {
+        requireApiKey(config);
         this.config = config;
         this.client = new OpenAI({
             apiKey: config.apiKey,
@@ -75,14 +77,16 @@ export class SongWriter {
             fs.mkdirSync(folder);
         }
 
-        const songPath = path.join(folder, 'song.md');
-        fs.writeFileSync(songPath, content, 'utf8');
-
+        // Write plan.json first, then song.md. song.md is the pipeline gate,
+        // so its presence implies plan.json also exists.
         let planPath = null;
         if (lc.savePlan) {
             planPath = path.join(folder, 'plan.json');
             fs.writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf8');
         }
+
+        const songPath = path.join(folder, 'song.md');
+        fs.writeFileSync(songPath, content, 'utf8');
 
         return {
             title: parsed.title,

@@ -2,8 +2,8 @@
 // Two independent byte-level operations on a standard MIDI file:
 //
 //   1. injectTitleAndComposer() — writes track_name + copyright meta into track 0
-//   2. injectPrograms()         — writes a program_change event at the start of
-//                                 each non-conductor track, based on channel
+//   2. injectPrograms()         — writes program_change events at the start of
+//                                 each channel used by each non-conductor track
 //
 // Both walk the raw MIDI bytes; no dependencies.
 
@@ -49,8 +49,11 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
 
     const newEvents = [];
     const metaText = (t, text) => {
-        const payload = Buffer.from(text, 'utf8');
-        return Buffer.concat([Buffer.from([0x00, 0xFF, t, payload.length]), payload]);
+        const payload = Buffer.from(text, 'utf8').subarray(0, 0x7f);
+        return Buffer.concat([
+            Buffer.from([0x00, 0xFF, t, payload.length]),
+            payload,
+        ]);
     };
 
     if (title) newEvents.push(metaText(0x03, title));
@@ -80,12 +83,18 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
 }
 
 /**
- * Insert a program_change event at the start of each non-conductor track.
+ * Insert program_change events at the start of each non-conductor track,
+ * one per channel that the track actually uses.
+ *
+ * This does NOT assume each track uses a single channel. abc2midi's
+ * chord-following accompaniment writes notes to two channels (typically
+ * 2 and 3) so it can stagger chord-tone durations. We inject a program
+ * change for every channel we see that has a configured program.
  *
  * @param {Buffer} midiBuffer
  * @param {Object<number, number>} programsByChannel
  *   Map of channel → GM program number. Example:
- *     { 0: 24, 1: 24, 2: 0 }
+ *     { 0: 24, 1: 24, 2: 0, 3: 0 }
  *   Channels not listed are left alone.
  * @returns {Buffer}
  */
@@ -99,7 +108,6 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
     const headerLen = midiBuffer.readUInt32BE(4);
     let pos = 8 + headerLen;
 
-    // Collect all MTrk chunk offsets.
     const tracks = [];
     while (pos + 8 <= midiBuffer.length) {
         if (midiBuffer.toString('ascii', pos, pos + 4) !== 'MTrk') break;
@@ -114,17 +122,16 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
 
     if (tracks.length === 0) return midiBuffer;
 
-    // Determine the primary channel for each track by scanning its events.
-    // We pick the first channel seen on a note-on event.
-    function primaryChannel(t) {
+    // Collect every distinct channel used by channel-voice events in
+    // the track. Meta and sysex events don't carry channels.
+    function channelsUsed(t) {
+        const seen = new Set();
         let p = t.dataStart;
-        let sawChannel = null;
         while (p < t.dataEnd) {
-            let delta = 0, b;
-            do { b = midiBuffer[p++]; delta = (delta << 7) | (b & 0x7f); } while (b & 0x80);
+            let b;
+            do { b = midiBuffer[p++]; } while (b & 0x80);
 
             const status = midiBuffer[p];
-
             if (status === 0xFF) {
                 const len = midiBuffer[p + 2];
                 p += 3 + len;
@@ -135,45 +142,52 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
                 const type = status & 0xF0;
                 const ch = status & 0x0F;
                 const need = (type === 0xC0 || type === 0xD0) ? 2 : 3;
-                if (type === 0x90 && sawChannel == null) {
-                    sawChannel = ch;
-                }
+                seen.add(ch);
                 p += need;
             }
         }
-        return sawChannel;
+        return [...seen].sort((a, b) => a - b);
     }
 
-    // Rewrite a track by prepending a program_change event.
-    function rewriteTrack(t, program, channel) {
-        const newProgramChange = Buffer.from([
-            0x00,                      // delta = 0
-            0xC0 | (channel & 0x0F),   // program change on this channel
-            program & 0x7F,            // GM program number
-        ]);
+    function rewriteTrack(t, programEntries) {
+        const headerBytes = [];
+        for (const { channel, program } of programEntries) {
+            headerBytes.push(
+                Buffer.from([
+                    0x00,                          // delta = 0
+                    0xC0 | (channel & 0x0F),
+                    program & 0x7F,
+                ])
+            );
+        }
         const data = midiBuffer.subarray(t.dataStart, t.dataEnd);
-        const newData = Buffer.concat([newProgramChange, data]);
+        const newData = Buffer.concat([...headerBytes, data]);
         const hdr = Buffer.alloc(8);
         hdr.write('MTrk', 0, 'ascii');
         hdr.writeUInt32BE(newData.length, 4);
         return Buffer.concat([hdr, newData]);
     }
 
-    // Build output: header + rewritten tracks.
     const out = [midiBuffer.subarray(0, 8 + headerLen)];
     for (let i = 0; i < tracks.length; i++) {
         const t = tracks[i];
-        // Skip track 0 (conductor) — no notes, no program needed.
         if (i === 0) {
+            // Conductor — meta only, no channels.
             out.push(midiBuffer.subarray(t.start, t.dataEnd));
             continue;
         }
-        const ch = primaryChannel(t);
-        if (ch == null || programsByChannel[ch] == null) {
+        const channels = channelsUsed(t);
+        const programEntries = [];
+        for (const ch of channels) {
+            if (programsByChannel[ch] != null) {
+                programEntries.push({ channel: ch, program: programsByChannel[ch] });
+            }
+        }
+        if (programEntries.length === 0) {
             out.push(midiBuffer.subarray(t.start, t.dataEnd));
             continue;
         }
-        out.push(rewriteTrack(t, programsByChannel[ch], ch));
+        out.push(rewriteTrack(t, programEntries));
     }
     return Buffer.concat(out);
 }

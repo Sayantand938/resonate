@@ -4,109 +4,130 @@ Blue Light on the Wet Floor
 
 # STYLE
 
-Indie pop / synth-pop with subtle R&B inflections, 112 BPM, tender, kinetic, quietly hopeful, intimate mezzo-soprano with conversational phrasing, analog synth bass, glassy electric piano, muted guitar, warm drum machine, cello, spare groove widening into a memorable final chorus, glossy nocturnal production with close human vocal detail.
+Indie pop, 112 BPM, tender, intimate mezzo-soprano, acoustic guitar and piano only.
 
 # LYRICS
 
 [Instrumental Intro]
 
-[Verse 1]  
-After closing, I drag the squeegee  
-Past the sharks asleep in the dark.  
-Salt dries white along my sneakers,  
-Blue water moves across the floor.  
+[Verse 1]
 
-By the jellyfish, under the handle,  
-There’s a square of paper folded twice:  
-“Some things still glow when no one’s looking.”  
-No name, just a crooked line.  
+After closing, down the hall,
+Blue water shining on the wall.
+Salt is drying on my shoes,
+Midnight gives me nothing new.
 
-I tell myself it’s an art project,  
-Something clever for the late-night crowd.  
-Still, I keep it in my pocket  
-Like a question I won’t read out loud.
+By the jellyfish, I found
+A little note folded down.
+Four small words in crooked lines:
+“Some things glow at closing time.”
 
-[Pre-Chorus]  
-The pumps keep humming through the walls,  
-The glass keeps holding back the sea.  
-My cracked phone lights up in my hand—  
-One more hour, and then I’ll see.
+I said, “It’s nothing, let it go,”
+But kept it where nobody knows.
+In my pocket, all night long,
+Like a question in a song.
 
-[Chorus]  
-Blue light on the wet floor,  
-Your shadow waiting by the door.  
-I thought I wanted the safer glow,  
-A life behind a screen I know.  
-But here you are, and here am I,  
-With all the words we left behind.  
-Blue light on the wet floor—  
-I don’t want to disappear anymore.
+[Pre-Chorus]
+
+The pumps are humming, low and slow,
+The whole place starts to lose its glow.
+My cracked phone lights up my hand—
+One more hour, then I’ll understand.
+
+[Chorus]
+
+Blue light, blue light, on the floor,
+Your shadow waiting by the door.
+Blue light, blue light, in my eyes,
+Pulling me back from goodbye.
+
+I thought I wanted somewhere safe,
+A quiet room, a clean escape.
+But here you are, and here am I—
+Still got a little life inside.
+
+Blue light, blue light, on the floor,
+I don't wanna disappear anymore.
 
 [Instrumental Interlude]
 
-[Verse 2]  
-The last note says, “Staff entrance. Sunrise.”  
-I laugh once, then I miss a step.  
-At four-fifty, the parking lot  
-Is turning gray around the edges.  
+[Verse 2]
 
-You’re holding two vending-machine coffees,  
-Both too sweet and barely warm.  
-You look older than the silence,  
-I look tired from keeping score.  
+“Staff entrance. Sunrise.”
+I read the note and missed a step twice.
+Four-fifty, morning gray,
+Night is slowly giving way.
 
-You say, “I didn’t know how to call you.”  
-I say, “You had my number still.”  
-The pumps go quiet for a second,  
-Or maybe everything else does.
+Two sweet coffees in your hands,
+Too cold to warm, but here you stand.
+You look tired, I look the same,
+Two old hearts that lost the game.
 
-[Pre-Chorus]  
-Wet footprints lead out to the street,  
-Two crooked lines across the blue.  
-The morning doesn’t fix a thing—  
-It only makes the damage true.
+You said, “I didn't know how to call.”
+I said, “You had my number all along.”
+The pumps went quiet, soft and slow—
+Or maybe I just heard you close.
 
-[Chorus]  
-Blue light on the wet floor,  
-Your shadow waiting by the door.  
-I thought I wanted the safer glow,  
-A life behind a screen I know.  
-But here you are, and here am I,  
-With all the words we left behind.  
-Blue light on the wet floor—  
-I don’t want to disappear anymore.
+[Pre-Chorus]
 
-[Bridge]  
-We walk past the closed-up bakery,  
-Your coffee cooling in your hand.  
-You don’t ask me to forgive you,  
-I don’t promise that I can.  
+Wet footprints running down the street,
+Two crooked lines beneath our feet.
+Morning doesn't make things right,
+It only shows them in the light.
 
-I tell you what I should have told you:  
-That last fight still lives in me.  
-You say we don’t have to be who we were,  
-Just two people learning how to speak.  
+[Chorus]
 
-My phone is cracked, the screen keeps flickering,  
-Your shoulder brushes mine.  
-We don’t call it getting back together—  
-We just keep walking in the light.
+Blue light, blue light, on the floor,
+Your shadow waiting by the door.
+Blue light, blue light, in my eyes,
+Pulling me back from goodbye.
 
-[Final Chorus]  
-Blue light on the wet floor,  
-No one waiting by the door.  
-I thought I wanted the safer glow,  
-A life behind a screen I know.  
-But here you are, and here am I,  
-Not turning history into a lie.  
-Blue light on the wet floor—  
-We can begin without pretending anymore.  
+I thought I wanted somewhere safe,
+A quiet room, a clean escape.
+But here you are, and here am I—
+Still got a little life inside.
 
-Blue light fading into gold,  
-Your hand is warm against the cold.  
-We don’t know what this becomes,  
-But we’re not running from the undone.  
-Blue light on the wet floor—  
-I don’t want to disappear anymore.
+Blue light, blue light, on the floor,
+I don't wanna disappear anymore.
+
+[Bridge]
+
+We walk past the bakery,
+You don't ask what I can't give.
+I don't say that I forgive,
+You don't ask me to forget.
+
+I tell you what I couldn't say,
+You tell me we can change the way.
+Not who we were, not yesterday—
+Just two people finding words to say.
+
+Your shoulder touches mine,
+My cracked screen flickers one more time.
+We don't know where this road goes—
+We just keep walking as it glows.
+
+[Final Chorus]
+
+Blue light, blue light, on the floor,
+Nobody waiting by the door.
+Blue light, blue light, fading gold,
+Your hand is warm, the morning's cold.
+
+I thought I wanted somewhere safe,
+A quiet room, a clean escape.
+But here you are, and here am I—
+Not running from the wrong or right.
+
+Blue light, blue light, on the floor,
+We don't have to hide anymore.
+
+Blue light, turning into gold,
+No promises we have to hold.
+We don't know what comes next—
+We just know we're not done yet.
+
+Blue light, blue light, on the floor,
+I don't wanna disappear anymore.
 
 [Instrumental Outro]

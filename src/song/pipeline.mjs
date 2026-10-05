@@ -107,6 +107,7 @@ export async function stageScore(config, {
                 title: out.title,
                 stage: 'score',
                 outputPath: out.abcPath,
+                seed: out.seed,
             });
             results.push(r);
             if (onProgress) onProgress({ phase: 'done', folder: f, result: r });
@@ -127,7 +128,6 @@ export async function stageScore(config, {
 export async function stageMidi(config, {
     folder = null,
     force = false,
-    engine,
     onProgress,
 } = {}) {
     const folders = listTargetFolders(config, folder);
@@ -153,9 +153,8 @@ export async function stageMidi(config, {
 
         if (onProgress) onProgress({ phase: 'start', folder: f, label: name });
         try {
-            const out = await runMidi(config, f, { engine });
+            const out = await runMidi(config, f);
             const r = resultOk(f, {
-                engine: out.engine,
                 stage: 'midi',
                 outputPath: out.midiPath,
             });
@@ -227,7 +226,6 @@ export async function stageRender(config, {
 export async function stageAll(config, {
     folder = null,
     force = false,
-    engine,
     onProgress,
 } = {}) {
     // In "all" mode each stage runs over the same folder set. Downstream
@@ -235,22 +233,21 @@ export async function stageAll(config, {
 
     if (folder) {
         // Single-folder mode: run all three stages sequentially, return
-        // only the final result.
+        // the render stage's results.
         const s = await stageScore(config, { folder, force });
         const sRes = s[0];
         if (!sRes.ok && !sRes.skipped) return [sRes];
 
-        const m = await stageMidi(config, { folder, force, engine });
+        const m = await stageMidi(config, { folder, force });
         const mRes = m[0];
         if (!mRes.ok && !mRes.skipped) return [mRes];
 
-        const r = await stageRender(config, { folder, force });
-        return r;
+        return stageRender(config, { folder, force });
     }
 
     // Batch mode: run each stage across all folders, concatenate results.
     const scoreResults = await stageScore(config, { force, onProgress });
-    const midiResults = await stageMidi(config, { force, engine, onProgress });
+    const midiResults = await stageMidi(config, { force, onProgress });
     const renderResults = await stageRender(config, { force, onProgress });
 
     return [...scoreResults, ...midiResults, ...renderResults];

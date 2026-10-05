@@ -23,10 +23,9 @@ export function loadConfig(configPathOverride) {
     const data = yaml.load(fs.readFileSync(configPath, 'utf8')) ?? {};
     const base = path.dirname(configPath);
 
-    const apiKey = process.env.AI_API;
-    if (!apiKey) {
-        throw new Error('AI_API not set. Add it to .env or the environment.');
-    }
+    // AI_API is required only by the lyrics stages. Individual stage runners
+    // read config.apiKey lazily; if it's missing they throw a clear error.
+    const apiKey = process.env.AI_API ?? null;
 
     const lyricsRaw = data.lyrics ?? {};
     const scoreRaw = data.score ?? {};
@@ -66,6 +65,7 @@ export function loadConfig(configPathOverride) {
             cot: scoreRaw.cot ?? 'full',
             stopAfter: scoreRaw.stop_after ?? 'abc',
             seed: Number(scoreRaw.seed ?? 1234),
+            seedMode: String(scoreRaw.seed_mode ?? 'fixed').toLowerCase(),
             numInferenceSteps: Number(scoreRaw.num_inference_steps ?? 32),
             timeoutSeconds: Number(scoreRaw.timeout_seconds ?? 600),
         },
@@ -76,16 +76,21 @@ export function loadConfig(configPathOverride) {
             lufs: Number(renderRaw.lufs ?? -14),
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
-
-            // MIDI engine selection
-            abcEngine: renderRaw.abc_engine ?? 'abcjs',
-            abc2midiPath: renderRaw.abc2midi_path ?? 'C:/Program Files/abcmidi/abc2midi.exe',
-
-            // General MIDI program numbers per voice role.
             voicePrograms: {
                 melody: Number(voiceProgramsRaw.melody ?? 0),
                 ins: Number(voiceProgramsRaw.ins ?? 0),
-                chords: Number(voiceProgramsRaw.chords ?? 0),
+                accompaniment: Number(
+                    voiceProgramsRaw.accompaniment
+                    ?? voiceProgramsRaw.chords
+                    ?? 0
+                ),
+                accompaniment2: Number(
+                    voiceProgramsRaw.accompaniment2
+                    ?? voiceProgramsRaw.chords2
+                    ?? voiceProgramsRaw.accompaniment
+                    ?? voiceProgramsRaw.chords
+                    ?? 0
+                ),
             },
         },
         apiKey,
@@ -93,4 +98,17 @@ export function loadConfig(configPathOverride) {
 
     if (!configPathOverride) _cache = cfg;
     return cfg;
+}
+
+/**
+ * Assert that the config has everything a lyrics stage needs.
+ * Called from Planner / SongWriter constructors.
+ */
+export function requireApiKey(config) {
+    if (!config.apiKey) {
+        throw new Error(
+            'AI_API not set. Add it to .env or the environment before running ' +
+            'lyrics-stage commands.'
+        );
+    }
 }

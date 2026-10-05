@@ -24,9 +24,14 @@ score:
   model: yue2-music
   cot: full
   stop_after: abc
-  seed: 1234
   num_inference_steps: 32
   timeout_seconds: 600
+
+  # Seed handling for YuE2.
+  #   fixed   — always use `seed` below (reproducible across runs)
+  #   random  — fresh random seed on every call (never reproducible)
+  seed_mode: random
+  seed: 1234        # unused when seed_mode is "random", kept as a fallback
 
 render:
   soundfont: null
@@ -36,17 +41,17 @@ render:
   timeout_seconds: 300
   composer: Sayantan
 
-  # MIDI engine: "abcjs" (in-process, default) or "abc2midi" (external binary).
-  # abc2midi is more reliable for ABCs with named voices; abcjs is more
-  # forgiving of ABC syntax. If abc2midi fails, the pipeline automatically
-  # falls back to abcjs.
-  abc_engine: abcjs
-  abc2midi_path: "C:/Program Files/abcmidi/abc2midi.exe"
-
-  # MIDI program numbers per role. See General MIDI spec for the full list.
+  # MIDI program numbers per role.
   # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar
   # 32=Acoustic Bass        33=Fingered Bass  34=Picked Bass    48=Strings
+  #
+  # channels:
+  #   ch 0  melody voice (V: Vocal)
+  #   ch 1  ins voice    (V: Ins)
+  #   ch 2  accompaniment (abcjs-generated from chord symbols)
+  #   ch 3  reserved for future use
   voice_programs:
-    melody: 24    # V: Vocal  → Nylon String Guitar
-    ins:    24    # V: Ins    → Nylon String Guitar
-    chords: 0     # auto-generated chord bed → Acoustic Grand Piano
+    melody:         24    # V: Vocal  → Nylon String Guitar (lead)
+    ins:             0    # V: Ins    → Acoustic Grand Piano (counter-melody)
+    accompaniment:   0    # ch 2      → Acoustic Grand Piano
+    accompaniment2:  0    # ch 3      → Acoustic Grand Piano

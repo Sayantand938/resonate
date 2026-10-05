@@ -45,7 +45,10 @@ function makeProgress() {
         if (phase === 'start') {
             process.stderr.write(`${id} ... `);
         } else if (phase === 'done') {
-            const extra = result?.title ? `  ${result.title}` : '';
+            const parts = [];
+            if (result?.title) parts.push(result.title);
+            if (result?.seed != null) parts.push(`seed=${result.seed}`);
+            const extra = parts.length ? `  ${parts.join('  ')}` : '';
             process.stderr.write(`${OK_TAG}${extra}\n`);
         } else if (phase === 'skip') {
             const reason = result?.reason ?? 'skipped';
@@ -94,6 +97,11 @@ function printStageSummary(results, { stage, single = false }) {
     return failCount === 0 ? 0 : 1;
 }
 
+// Set exit code instead of calling process.exit() so stdout flushes on Windows.
+function setExit(code) {
+    if (code) process.exitCode = code;
+}
+
 // =====================================================================
 // lyrics — create N new songs (plan + lyrics only)
 // =====================================================================
@@ -111,11 +119,13 @@ program
 
         if (!Number.isInteger(n) || n < 1) {
             console.error(`--n must be a positive integer`);
-            process.exit(1);
+            setExit(1);
+            return;
         }
         if (n > 1 && opts.theme) {
             console.error(`--theme can only be used with --n 1 (got --n ${n})`);
-            process.exit(1);
+            setExit(1);
+            return;
         }
 
         console.log('');
@@ -155,7 +165,7 @@ program
             console.log('');
         }
 
-        if (failCount > 0) process.exit(1);
+        if (failCount > 0) setExit(1);
     });
 
 // =====================================================================
@@ -175,7 +185,8 @@ program
             const results = await stageScore(config, {
                 folder, force: Boolean(opts.force),
             });
-            process.exit(printStageSummary(results, { stage: 'score', single: true }));
+            setExit(printStageSummary(results, { stage: 'score', single: true }));
+            return;
         }
 
         console.log('');
@@ -187,7 +198,7 @@ program
             force: Boolean(opts.force),
             onProgress: makeProgress(),
         });
-        process.exit(printStageSummary(results, { stage: 'score' }));
+        setExit(printStageSummary(results, { stage: 'score' }));
     });
 
 // =====================================================================
@@ -196,9 +207,8 @@ program
 
 program
     .command('midi [songFolder]')
-    .description('Convert score.abc → score.mid')
+    .description('Convert score.abc → score.mid via abcjs')
     .option('--force', 'regenerate even if score.mid already exists')
-    .option('--engine <name>', 'MIDI engine: abcjs or abc2midi')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
         const single = Boolean(songFolderArg);
@@ -208,23 +218,21 @@ program
             const results = await stageMidi(config, {
                 folder,
                 force: Boolean(opts.force),
-                engine: opts.engine,
             });
-            process.exit(printStageSummary(results, { stage: 'midi', single: true }));
+            setExit(printStageSummary(results, { stage: 'midi', single: true }));
+            return;
         }
 
         console.log('');
         console.log('Rendering MIDI');
         if (opts.force) console.log('  mode: force');
-        if (opts.engine) console.log(`  engine: ${opts.engine}`);
         console.log('');
 
         const results = await stageMidi(config, {
             force: Boolean(opts.force),
-            engine: opts.engine,
             onProgress: makeProgress(),
         });
-        process.exit(printStageSummary(results, { stage: 'midi' }));
+        setExit(printStageSummary(results, { stage: 'midi' }));
     });
 
 // =====================================================================
@@ -244,7 +252,8 @@ program
             const results = await stageRender(config, {
                 folder, force: Boolean(opts.force),
             });
-            process.exit(printStageSummary(results, { stage: 'render', single: true }));
+            setExit(printStageSummary(results, { stage: 'render', single: true }));
+            return;
         }
 
         console.log('');
@@ -256,7 +265,7 @@ program
             force: Boolean(opts.force),
             onProgress: makeProgress(),
         });
-        process.exit(printStageSummary(results, { stage: 'render' }));
+        setExit(printStageSummary(results, { stage: 'render' }));
     });
 
 // =====================================================================
@@ -267,7 +276,6 @@ program
     .command('all [songFolder]')
     .description('Run score → midi → render (one song or all songs)')
     .option('--force', 'regenerate all intermediate outputs')
-    .option('--engine <name>', 'MIDI engine: abcjs or abc2midi')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
         const single = Boolean(songFolderArg);
@@ -276,17 +284,15 @@ program
         console.log('');
         console.log(single ? `Running pipeline for ${path.basename(folder)}` : 'Running pipeline for all songs');
         if (opts.force) console.log('  mode: force');
-        if (opts.engine) console.log(`  engine: ${opts.engine}`);
         console.log('');
 
         const results = await stageAll(config, {
             folder,
             force: Boolean(opts.force),
-            engine: opts.engine,
             onProgress: single ? null : makeProgress(),
         });
 
-        process.exit(printStageSummary(results, { stage: 'all', single }));
+        setExit(printStageSummary(results, { stage: 'all', single }));
     });
 
 // =====================================================================
