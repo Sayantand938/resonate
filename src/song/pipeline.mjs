@@ -7,6 +7,12 @@
 //   - skips songs whose input is missing (with a reason)
 //   - reports progress via onProgress callback
 //   - returns an array of result objects
+//
+// Progress events:
+//   { phase: 'start'|'done'|'skip'|'fail', stage, folder, label?, result? }
+//
+// `stage` is set on every event by the stage runner, so downstream
+// consumers (the CLI) can prefix batch output with the stage name.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,6 +40,12 @@ function resultFail(folder, error, stage) {
     return { ok: false, folder, error, stage };
 }
 
+// Wrap onProgress so every event carries the stage name.
+function taggedProgress(onProgress, stage) {
+    if (!onProgress) return undefined;
+    return (event) => onProgress({ ...event, stage });
+}
+
 // =====================================================================
 // lyrics — create N new songs
 // =====================================================================
@@ -46,10 +58,11 @@ export async function stageLyrics(config, {
     onProgress,
 } = {}) {
     const results = [];
+    const progress = taggedProgress(onProgress, 'lyrics');
 
     for (let i = 0; i < n; i++) {
         const label = n === 1 ? 'song' : `song ${i + 1}/${n}`;
-        if (onProgress) onProgress({ phase: 'start', label });
+        if (progress) progress({ phase: 'start', label });
 
         try {
             const plan = await runPlan(config, { theme, genre, mood });
@@ -59,11 +72,11 @@ export async function stageLyrics(config, {
                 stage: 'lyrics',
             });
             results.push(r);
-            if (onProgress) onProgress({ phase: 'done', label, result: r });
+            if (progress) progress({ phase: 'done', label, result: r });
         } catch (err) {
             const r = resultFail(null, err.message, 'lyrics');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'fail', label, result: r });
+            if (progress) progress({ phase: 'fail', label, result: r });
         }
     }
 
@@ -71,7 +84,7 @@ export async function stageLyrics(config, {
 }
 
 // =====================================================================
-// score — song.md → score.abc
+// score — song.md → score.abc + score.meta.json
 // =====================================================================
 
 export async function stageScore(config, {
@@ -81,6 +94,7 @@ export async function stageScore(config, {
 } = {}) {
     const folders = listTargetFolders(config, folder);
     const results = [];
+    const progress = taggedProgress(onProgress, 'score');
 
     for (const f of folders) {
         const name = path.basename(f);
@@ -90,17 +104,17 @@ export async function stageScore(config, {
         if (!fs.existsSync(songPath)) {
             const r = resultSkip(f, 'no song.md', 'score');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'skip', folder: f, result: r });
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
             continue;
         }
         if (fs.existsSync(abcPath) && !force) {
             const r = resultSkip(f, 'score.abc exists', 'score');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'skip', folder: f, result: r });
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
             continue;
         }
 
-        if (onProgress) onProgress({ phase: 'start', folder: f, label: name });
+        if (progress) progress({ phase: 'start', folder: f, label: name });
         try {
             const out = await runScore(config, f);
             const r = resultOk(f, {
@@ -110,11 +124,11 @@ export async function stageScore(config, {
                 seed: out.seed,
             });
             results.push(r);
-            if (onProgress) onProgress({ phase: 'done', folder: f, result: r });
+            if (progress) progress({ phase: 'done', folder: f, result: r });
         } catch (err) {
             const r = resultFail(f, err.message, 'score');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'fail', folder: f, result: r });
+            if (progress) progress({ phase: 'fail', folder: f, result: r });
         }
     }
 
@@ -122,7 +136,7 @@ export async function stageScore(config, {
 }
 
 // =====================================================================
-// midi — score.abc → score.mid
+// midi — score.abc → score.mid (+ score.human.mid)
 // =====================================================================
 
 export async function stageMidi(config, {
@@ -132,6 +146,7 @@ export async function stageMidi(config, {
 } = {}) {
     const folders = listTargetFolders(config, folder);
     const results = [];
+    const progress = taggedProgress(onProgress, 'midi');
 
     for (const f of folders) {
         const name = path.basename(f);
@@ -141,29 +156,30 @@ export async function stageMidi(config, {
         if (!fs.existsSync(abcPath)) {
             const r = resultSkip(f, 'no score.abc', 'midi');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'skip', folder: f, result: r });
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
             continue;
         }
         if (fs.existsSync(midiPath) && !force) {
             const r = resultSkip(f, 'score.mid exists', 'midi');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'skip', folder: f, result: r });
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
             continue;
         }
 
-        if (onProgress) onProgress({ phase: 'start', folder: f, label: name });
+        if (progress) progress({ phase: 'start', folder: f, label: name });
         try {
             const out = await runMidi(config, f);
             const r = resultOk(f, {
                 stage: 'midi',
                 outputPath: out.midiPath,
+                humanized: out.humanized,
             });
             results.push(r);
-            if (onProgress) onProgress({ phase: 'done', folder: f, result: r });
+            if (progress) progress({ phase: 'done', folder: f, result: r });
         } catch (err) {
             const r = resultFail(f, err.message, 'midi');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'fail', folder: f, result: r });
+            if (progress) progress({ phase: 'fail', folder: f, result: r });
         }
     }
 
@@ -181,6 +197,7 @@ export async function stageRender(config, {
 } = {}) {
     const folders = listTargetFolders(config, folder);
     const results = [];
+    const progress = taggedProgress(onProgress, 'render');
 
     for (const f of folders) {
         const name = path.basename(f);
@@ -190,17 +207,17 @@ export async function stageRender(config, {
         if (!fs.existsSync(midiPath)) {
             const r = resultSkip(f, 'no score.mid', 'render');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'skip', folder: f, result: r });
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
             continue;
         }
         if (fs.existsSync(wavPath) && !force) {
             const r = resultSkip(f, 'song.wav exists', 'render');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'skip', folder: f, result: r });
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
             continue;
         }
 
-        if (onProgress) onProgress({ phase: 'start', folder: f, label: name });
+        if (progress) progress({ phase: 'start', folder: f, label: name });
         try {
             const out = await runRender(config, f);
             const r = resultOk(f, {
@@ -208,11 +225,11 @@ export async function stageRender(config, {
                 outputPath: out.wavPath,
             });
             results.push(r);
-            if (onProgress) onProgress({ phase: 'done', folder: f, result: r });
+            if (progress) progress({ phase: 'done', folder: f, result: r });
         } catch (err) {
             const r = resultFail(f, err.message, 'render');
             results.push(r);
-            if (onProgress) onProgress({ phase: 'fail', folder: f, result: r });
+            if (progress) progress({ phase: 'fail', folder: f, result: r });
         }
     }
 
@@ -245,7 +262,8 @@ export async function stageAll(config, {
         return stageRender(config, { folder, force });
     }
 
-    // Batch mode: run each stage across all folders, concatenate results.
+    // Batch mode: run each stage across all folders with its own
+    // progress tag, concatenate results.
     const scoreResults = await stageScore(config, { force, onProgress });
     const midiResults = await stageMidi(config, { force, onProgress });
     const renderResults = await stageRender(config, { force, onProgress });

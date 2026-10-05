@@ -1,0 +1,31 @@
+{
+  "title": "The Laundromat After Midnight",
+  "genre": "indie pop",
+  "mood": "restless, tender, quietly hopeful",
+  "theme": "A person realizes that moving on is not forgetting someone, but learning to carry their memories without letting them choose the future.",
+  "story": "After a breakup, the narrator spends a sleepless night washing the ex-partner's forgotten clothes in a nearly empty laundromat. A receipt in a jacket pocket reveals a train ticket dated for the next morning, making the narrator wonder whether to chase them. Instead of boarding the train, they return the clothes to the laundromat's lost-and-found and take the first bus home, finally choosing their own unfinished life.",
+  "setting": "A fluorescent laundromat at 2:17 a.m. in late autumn, with rain streaking the windows, warm dryer glass glowing against the blue street, and buses sighing past outside.",
+  "perspective": "First person, present tense, with the narrator discovering their decision in real time.",
+  "motifs": [
+    "spinning dryer windows",
+    "a damp denim jacket",
+    "a crumpled train ticket",
+    "fluorescent ceiling lights",
+    "rain on the glass",
+    "the first morning bus"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop at  e112 BPM, restless yet tender and hopeful, with an intimate conversational lead vocal; chorusy electric guitar, warm analog synth, melodic bass, crisp acoustic drums, subtle piano. Build from nocturnal restraint into a bright, bittersweet final chorus. Polished bedroom-pop production with fluorescent-night shimmer and gently compressed vocals."
+}

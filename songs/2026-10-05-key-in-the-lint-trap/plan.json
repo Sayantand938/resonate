@@ -1,0 +1,31 @@
+{
+  "title": "Key in the Lint Trap",
+  "genre": "indie pop",
+  "mood": "bittersweet, witty, quietly triumphant",
+  "theme": "Closure arrives when ordinary life becomes yours again, not when an ex finally explains themselves.",
+  "story": "At 2:13 a.m., the narrator runs into their ex at an all-night laundromat while washing clothes from the apartment they just left. They share quarters and forced small talk, circling the question of who gets the spare key. When the dryer jams, the narrator finds the key buried in the lint trap beside a blue sock and realizes the ex never needed to be confronted. They walk into the pale morning with clean clothes, the key in their pocket, and no reason to go back.",
+  "setting": "An all-night laundromat on a rainy weekday in early spring, fluorescent lights buzzing over spinning dryers, wet pavement outside, detergent sweetness in the air, and dawn slowly turning the windows silver.",
+  "perspective": "First person, present-tense, with the narrator recounting the encounter as it unfolds.",
+  "motifs": [
+    "a spare apartment key",
+    "a blue sock tumbling in a dryer",
+    "quarters lined along a folding table",
+    "rain streaking the laundromat windows",
+    "detergent-scented clothes",
+    "the red digits 2:13 on the wall clock"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop with nocturnal jangle and a sly, buoyant pulse, 112 BPM, bittersweet and quietly triumphant; intimate, conversational lead vocal with lifted chorus harmonies; chiming electric guitar, warm synth bass, Wurlitzer, tight acoustic drums, handclaps; build from close quarters into a wide final chorus; glossy cassette grain and bright room reverb."
+}

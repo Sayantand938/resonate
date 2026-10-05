@@ -1,0 +1,31 @@
+{
+  "title": "The Blue Sock Problem",
+  "genre": "indie pop with bedroom-pop edges",
+  "mood": "wistful, buoyant, quietly defiant",
+  "theme": "Moving on begins when you stop inventing reasons to return to someone who has already left.",
+  "story": "At 2:17 a.m., the narrator takes a basket of laundry to the fluorescent laundromat after their ex has emptied the apartment. They find one blue sock caught in the dryer and text their ex, pretending it might be important enough to justify a meeting. While waiting beside the humming machines, they realize the sock is theirs and they have been holding onto the excuse, not the relationship. They walk home at sunrise with the sock in their pocket and leave the ex's number uncalled.",
+  "setting": "A twenty-four-hour laundromat on a nearly empty city block in late autumn, with fluorescent lights, rain-streaked windows, warm dryer glass, vending-machine coffee, and pale sunrise arriving between apartment buildings.",
+  "perspective": "First person, present tense, narrated by someone catching themselves in the middle of an unnecessary goodbye.",
+  "motifs": [
+    "a single blue sock tumbling behind dryer glass",
+    "the digital clock reading 2:17",
+    "rain on the laundromat windows",
+    "an unopened text message",
+    "vending-machine coffee",
+    "sunrise on a quiet walk home"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop with jangly bedroom-pop edges, 112 BPM; wistful, buoyant, quietly defiant. Intimate close-mic alto vocal with conversational phrasing; clean electric guitar, warm synth bass, drum machine, glockenspiel, muted piano. Build toward a wide singalong chorus, with homemade cassette texture and crisp modern low end."
+}

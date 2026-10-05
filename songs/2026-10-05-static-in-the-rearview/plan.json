@@ -1,0 +1,31 @@
+{
+  "title": "Static in the Rearview",
+  "genre": "alternative rock with indie-pop hooks",
+  "mood": "restless, bruised, defiant",
+  "theme": "Leaving a dead-end hometown becomes an act of reclaiming your voice rather than running from your past.",
+  "story": "On the night of the town's annual fireworks, the narrator packs a duffel bag in the back room of a closed-down video store. Their ex-friend arrives with an old cassette and argues that leaving means abandoning everyone who stayed. The narrator drives through the flashing fireworks, nearly turns back at the county line, then hears their own younger voice on the tape and keeps going. By sunrise, they pull into a strange city with the cassette still playing and no promise except motion.",
+  "setting": "A humid summer night in a fading mill town, beginning in a dusty video store after closing and moving onto two-lane highways beneath orange fireworks and flickering gas-station lights; dawn arrives in a gray city parking lot.",
+  "perspective": "First person, present-tense during the escape, with flashes of remembered adolescence.",
+  "motifs": [
+    "a cracked cassette tape",
+    "fireworks reflected in a windshield",
+    "a locked video-store door",
+    "county-line road signs",
+    "gas-station coffee",
+    "a duffel bag on the passenger seat"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Alternative rock with indie-pop hooks,  horen at 142 BPM; restless, bruised, defiant; urgent, slightly ragged lead vocal with intimate verses; overdriven electric guitars, melodic bass, live drum kit, analog synth, piano. Build from tight verses into a wide, cathartic final chorus. Gritty tape saturation, bright guitar feedback, and a raw room feel."
+}
