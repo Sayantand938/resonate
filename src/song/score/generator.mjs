@@ -20,17 +20,22 @@ export class SongScorer {
         }
 
         const seed = this._resolveSeed();
-        const abcText = await this._callYue2(parsed, seed);
+        const { abc, meta } = await this._callYue2(parsed, seed);
 
         const abcPath = path.join(folder, 'score.abc');
-        fs.writeFileSync(abcPath, abcText, 'utf8');
+        fs.writeFileSync(abcPath, abc, 'utf8');
+
+        const metaPath = path.join(folder, 'score.meta.json');
+        fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf8');
 
         return {
             title: parsed.title,
             folder,
             abcPath,
-            abcText,
-            seed,
+            metaPath,
+            abcText: abc,
+            meta,
+            seed: meta.seed,
         };
     }
 
@@ -40,9 +45,9 @@ export class SongScorer {
      *   random  → fresh 31-bit integer on every call
      *   fixed   → config.score.seed, used for every song
      *
-     * In "random" mode the seed is ephemeral — it's not written anywhere,
-     * so a re-run of the same song produces a different composition. If
-     * you want to keep a random result, keep the generated score.abc.
+     * In "random" mode the actual seed chosen is written into
+     * score.meta.json so the composition can be reproduced later by
+     * setting seed_mode: fixed and using that seed value.
      */
     _resolveSeed() {
         const sc = this.config.score;

@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-05T19:58:46.350Z",
+  "finished_at": "2026-10-05T19:59:11.460Z",
+  "elapsed_ms": 25110,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop, 112 BPM, tender, intimate mezzo-soprano, acoustic guitar and piano only.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]\n\nAfter closing, down the hall,\nBlue water shining on the wall.\nSalt is drying on my shoes,\nMidnight gives me nothing new.\n\nBy the jellyfish, I found\nA little note folded down.\nFour small words in crooked lines:\n“Some things glow at closing time.”\n\nI said, “It’s nothing, let it go,”\nBut kept it where nobody knows.\nIn my pocket, all night long,\nLike a question in a song.\n\n[Pre-Chorus]\n\nThe pumps are humming, low and slow,\nThe whole place starts to lose its glow.\nMy cracked phone lights up my hand—\nOne more hour, then I’ll understand.\n\n[Chorus]\n\nBlue light, blue light, on the floor,\nYour shadow waiting by the door.\nBlue light, blue light, in my eyes,\nPulling me back from goodbye.\n\nI thought I wanted somewhere safe,\nA quiet room, a clean escape.\nBut here you are, and here am I—\nStill got a little life inside.\n\nBlue light, blue light, on the floor,\nI don't wanna disappear anymore.\n\n[Instrumental Interlude]\n\n[Verse 2]\n\n“Staff entrance. Sunrise.”\nI read the note and missed a step twice.\nFour-fifty, morning gray,\nNight is slowly giving way.\n\nTwo sweet coffees in your hands,\nToo cold to warm, but here you stand.\nYou look tired, I look the same,\nTwo old hearts that lost the game.\n\nYou said, “I didn't know how to call.”\nI said, “You had my number all along.”\nThe pumps went quiet, soft and slow—\nOr maybe I just heard you close.\n\n[Pre-Chorus]\n\nWet footprints running down the street,\nTwo crooked lines beneath our feet.\nMorning doesn't make things right,\nIt only shows them in the light.\n\n[Chorus]\n\nBlue light, blue light, on the floor,\nYour shadow waiting by the door.\nBlue light, blue light, in my eyes,\nPulling me back from goodbye.\n\nI thought I wanted somewhere safe,\nA quiet room, a clean escape.\nBut here you are, and here am I—\nStill got a little life inside.\n\nBlue light, blue light, on the floor,\nI don't wanna disappear anymore.\n\n[Bridge]\n\nWe walk past the bakery,\nYou don't ask what I can't give.\nI don't say that I forgive,\nYou don't ask me to forget.\n\nI tell you what I couldn't say,\nYou tell me we can change the way.\nNot who we were, not yesterday—\nJust two people finding words to say.\n\nYour shoulder touches mine,\nMy cracked screen flickers one more time.\nWe don't know where this road goes—\nWe just keep walking as it glows.\n\n[Final Chorus]\n\nBlue light, blue light, on the floor,\nNobody waiting by the door.\nBlue light, blue light, fading gold,\nYour hand is warm, the morning's cold.\n\nI thought I wanted somewhere safe,\nA quiet room, a clean escape.\nBut here you are, and here am I—\nNot running from the wrong or right.\n\nBlue light, blue light, on the floor,\nWe don't have to hide anymore.\n\nBlue light, turning into gold,\nNo promises we have to hold.\nWe don't know what comes next—\nWe just know we're not done yet.\n\nBlue light, blue light, on the floor,\nI don't wanna disappear anymore.\n\n[Instrumental Outro]",
+      "seed": 395866263
+    }
+  },
+  "seed": 395866263,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 5210,
+    "abc_lines": 287
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 395866263 in config.yaml, then run: resonate score <song-folder> --force"
+}

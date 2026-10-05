@@ -8,10 +8,54 @@ export class Yue2Client {
         this.config = config;    // config.score
     }
 
+    /**
+     * Call YuE2 and return both the ABC text and metadata about the call.
+     *
+     * @param {Object} opts
+     * @param {string} opts.style
+     * @param {string} opts.lyrics
+     * @param {number} [opts.seed]
+     * @returns {Promise<{ abc: string, meta: object }>}
+     */
     async generateAbc({ style, lyrics, seed }) {
-        const payload = this._buildPayload({ style, lyrics, seed });
+        const resolvedSeed = seed ?? this.config.seed;
+        const payload = this._buildPayload({ style, lyrics, seed: resolvedSeed });
+
+        const startedAt = new Date().toISOString();
+        const t0 = Date.now();
+
         const json = await this._post(payload);
-        return this._extractAbc(json);
+
+        const elapsedMs = Date.now() - t0;
+        const finishedAt = new Date().toISOString();
+
+        const abc = this._extractAbc(json);
+
+        const meta = {
+            provider: 'yue2',
+            endpoint: this.config.baseUrl.replace(/\/+$/, '') + this.config.endpoint,
+            model: this.config.model,
+            requested_at: startedAt,
+            finished_at: finishedAt,
+            elapsed_ms: elapsedMs,
+            request: payload,
+            seed: resolvedSeed,
+            // A minimal snapshot of what came back, useful for debugging
+            // without storing the entire response (which may be large).
+            response_summary: {
+                top_level_keys: Object.keys(json ?? {}),
+                has_artifacts: Array.isArray(json?.artifacts),
+                abc_length: abc.length,
+                abc_lines: abc.split(/\r?\n/).length,
+            },
+            // The exact CLI command to reproduce this composition. Note the
+            // seed is captured even when seed_mode was "random".
+            recreate_hint:
+                `Set score.seed_mode: fixed and score.seed: ${resolvedSeed} ` +
+                `in config.yaml, then run: resonate score <song-folder> --force`,
+        };
+
+        return { abc, meta };
     }
 
     // ------------------------------------------------------------------

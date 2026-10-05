@@ -41,7 +41,7 @@ export async function runWrite(config, plan) {
 }
 
 // =====================================================================
-// score  (song.md -> score.abc via YuE2)
+// score  (song.md -> score.abc + score.meta.json via YuE2)
 // =====================================================================
 
 export async function runScore(config, songFolder) {

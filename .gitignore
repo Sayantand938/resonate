@@ -89,10 +89,15 @@ $RECYCLE.BIN/
 
 ### resonate — pipeline artifacts ###
 
-# Keep song.md, plan.json, and score.abc — they're the source of truth.
-# Ignore everything downstream that can be regenerated.
+# Tracked sources (in git, do NOT ignore):
+#   plan.json           creative plan
+#   song.md             lyrics + style
+#   score.abc           ABC notation
+#   score.meta.json     YuE2 generation info (seed, request, timing)
+#   score.mid           clean abcjs MIDI
+#   score.human.mid     humanized MIDI (what gets rendered to WAV)
 
-songs/**/score.mid
+# Ignored — regenerable from the sources above:
 songs/**/song.wav
 songs/**/.score.loud.mid
 songs/**/score.mscz
@@ -102,13 +107,14 @@ songs/**/*.bak
 songs/**/score-meta.mid
 songs/**/score.pdf
 
-# Debug / scratch files from pipeline investigations.
+# Debug / scratch files from pipeline investigations:
 yue2_debug_response.json
 songs/**/yue2_debug_response.json
 songs/**/song-notabc.mid
 songs/**/score.normalized.abc
 songs/**/debug-normalized.abc
-# VST experiment scratch files
+
+# VST experiment scratch files (at repo root):
 test-vst.wav
 test-note.wav
 test-multi.wav

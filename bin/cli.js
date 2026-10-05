@@ -11,7 +11,7 @@ import { Command } from 'commander';
 import Table from 'cli-table3';
 
 import { loadConfig } from '../src/song/config.mjs';
-import { runPlan, runWrite } from '../src/song/stages.mjs';
+import { runPlan, runWrite, runScore } from '../src/song/stages.mjs';
 import {
     findSongFolders, resolveSongFolder,
 } from '../src/song/paths.mjs';
@@ -20,11 +20,6 @@ import {
 } from '../src/song/pipeline.mjs';
 
 const program = new Command();
-
-program
-    .name('resonate')
-    .description('Song generation: theme → lyrics → ABC → MIDI → WAV')
-    .version('0.1.0');
 
 // =====================================================================
 // console helpers
@@ -97,10 +92,71 @@ function printStageSummary(results, { stage, single = false }) {
     return failCount === 0 ? 0 : 1;
 }
 
-// Set exit code instead of calling process.exit() so stdout flushes on Windows.
 function setExit(code) {
     if (code) process.exitCode = code;
 }
+
+// Shared metadata reader. Returns null if score.meta.json is missing or
+// unparseable. Used by list, show, meta, and recreate.
+function readMeta(folder) {
+    const metaPath = path.join(folder, 'score.meta.json');
+    if (!fs.existsSync(metaPath)) return null;
+    try {
+        return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+// Shared stage-command handler. Handles both single-folder and batch
+// modes, wires up progress output, and prints the summary.
+async function runStageCommand({
+    stageName,
+    stageFn,
+    description,
+    songFolderArg,
+    opts,
+    config,
+    extraArgs = {},
+}) {
+    const single = Boolean(songFolderArg);
+
+    if (single) {
+        const folder = resolveSongFolder(config, songFolderArg);
+        const results = await stageFn(config, {
+            folder,
+            force: Boolean(opts.force),
+            ...extraArgs,
+        });
+        setExit(printStageSummary(results, { stage: stageName, single: true }));
+        return;
+    }
+
+    console.log('');
+    console.log(description);
+    if (opts.force) console.log('  mode: force');
+    console.log('');
+
+    const results = await stageFn(config, {
+        force: Boolean(opts.force),
+        onProgress: makeProgress(),
+        ...extraArgs,
+    });
+    setExit(printStageSummary(results, { stage: stageName }));
+}
+
+// =====================================================================
+// program setup
+// =====================================================================
+
+program
+    .name('resonate')
+    .description('Song generation: theme → lyrics → ABC → MIDI → WAV')
+    .version('0.1.0');
+
+program.configureHelp({
+    subcommandTerm: (cmd) => cmd.name() + (cmd.usage() ? ' ' + cmd.usage() : ''),
+});
 
 // =====================================================================
 // lyrics — create N new songs (plan + lyrics only)
@@ -108,7 +164,7 @@ function setExit(code) {
 
 program
     .command('lyrics')
-    .description('Generate N new songs (plan.json + song.md only)')
+    .description('Create N new songs (plan.json + song.md)')
     .option('-n, --n <count>', 'number of songs to create', parseInt, 1)
     .option('-t, --theme <text>', 'theme seed (single-song mode only)')
     .option('-g, --genre <text>', 'genre seed reused across all songs')
@@ -174,31 +230,18 @@ program
 
 program
     .command('score [songFolder]')
-    .description('Generate score.abc (song.md → score.abc via YuE2)')
+    .description('Generate score.abc + score.meta.json via YuE2')
     .option('--force', 'regenerate even if score.abc already exists')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
-        const single = Boolean(songFolderArg);
-
-        if (single) {
-            const folder = resolveSongFolder(config, songFolderArg);
-            const results = await stageScore(config, {
-                folder, force: Boolean(opts.force),
-            });
-            setExit(printStageSummary(results, { stage: 'score', single: true }));
-            return;
-        }
-
-        console.log('');
-        console.log('Scoring songs (YuE2)');
-        if (opts.force) console.log('  mode: force');
-        console.log('');
-
-        const results = await stageScore(config, {
-            force: Boolean(opts.force),
-            onProgress: makeProgress(),
+        await runStageCommand({
+            stageName: 'score',
+            stageFn: stageScore,
+            description: 'Scoring songs (YuE2)',
+            songFolderArg,
+            opts,
+            config,
         });
-        setExit(printStageSummary(results, { stage: 'score' }));
     });
 
 // =====================================================================
@@ -207,32 +250,18 @@ program
 
 program
     .command('midi [songFolder]')
-    .description('Convert score.abc → score.mid via abcjs')
+    .description('Render score.abc → score.mid via abcjs (and humanize)')
     .option('--force', 'regenerate even if score.mid already exists')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
-        const single = Boolean(songFolderArg);
-
-        if (single) {
-            const folder = resolveSongFolder(config, songFolderArg);
-            const results = await stageMidi(config, {
-                folder,
-                force: Boolean(opts.force),
-            });
-            setExit(printStageSummary(results, { stage: 'midi', single: true }));
-            return;
-        }
-
-        console.log('');
-        console.log('Rendering MIDI');
-        if (opts.force) console.log('  mode: force');
-        console.log('');
-
-        const results = await stageMidi(config, {
-            force: Boolean(opts.force),
-            onProgress: makeProgress(),
+        await runStageCommand({
+            stageName: 'midi',
+            stageFn: stageMidi,
+            description: 'Rendering MIDI',
+            songFolderArg,
+            opts,
+            config,
         });
-        setExit(printStageSummary(results, { stage: 'midi' }));
     });
 
 // =====================================================================
@@ -245,27 +274,14 @@ program
     .option('--force', 'regenerate even if song.wav already exists')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
-        const single = Boolean(songFolderArg);
-
-        if (single) {
-            const folder = resolveSongFolder(config, songFolderArg);
-            const results = await stageRender(config, {
-                folder, force: Boolean(opts.force),
-            });
-            setExit(printStageSummary(results, { stage: 'render', single: true }));
-            return;
-        }
-
-        console.log('');
-        console.log('Rendering audio');
-        if (opts.force) console.log('  mode: force');
-        console.log('');
-
-        const results = await stageRender(config, {
-            force: Boolean(opts.force),
-            onProgress: makeProgress(),
+        await runStageCommand({
+            stageName: 'render',
+            stageFn: stageRender,
+            description: 'Rendering audio',
+            songFolderArg,
+            opts,
+            config,
         });
-        setExit(printStageSummary(results, { stage: 'render' }));
     });
 
 // =====================================================================
@@ -278,29 +294,350 @@ program
     .option('--force', 'regenerate all intermediate outputs')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
-        const single = Boolean(songFolderArg);
-        const folder = single ? resolveSongFolder(config, songFolderArg) : null;
-
-        console.log('');
-        console.log(single ? `Running pipeline for ${path.basename(folder)}` : 'Running pipeline for all songs');
-        if (opts.force) console.log('  mode: force');
-        console.log('');
-
-        const results = await stageAll(config, {
-            folder,
-            force: Boolean(opts.force),
-            onProgress: single ? null : makeProgress(),
+        await runStageCommand({
+            stageName: 'all',
+            stageFn: stageAll,
+            description: songFolderArg
+                ? `Running pipeline for ${path.basename(songFolderArg)}`
+                : 'Running pipeline for all songs',
+            songFolderArg,
+            opts,
+            config,
+            // In batch mode, stageAll concatenates results across stages.
+            // The summary below treats them uniformly.
         });
-
-        setExit(printStageSummary(results, { stage: 'all', single }));
     });
 
 // =====================================================================
-// plan — dev tool
+// recreate — re-issue the exact same YuE2 call
 // =====================================================================
 
 program
-    .command('plan')
+    .command('recreate [songFolder]')
+    .description('Regenerate score.abc from score.meta.json (uses the saved seed)')
+    .action(async (songFolderArg) => {
+        const config = loadConfig();
+
+        let folders;
+        if (songFolderArg) {
+            folders = [resolveSongFolder(config, songFolderArg)];
+        } else {
+            folders = findSongFolders(config.paths.songsDir);
+        }
+
+        if (folders.length === 0) {
+            console.log('No songs found.');
+            return;
+        }
+
+        console.log('');
+        console.log(songFolderArg
+            ? `Recreating ${path.basename(folders[0])}`
+            : 'Recreating all songs with metadata');
+        console.log('');
+
+        let okCount = 0;
+        let skipCount = 0;
+        let failCount = 0;
+        const failures = [];
+
+        for (const folder of folders) {
+            const name = path.basename(folder);
+            const meta = readMeta(folder);
+
+            if (!meta) {
+                console.log(`${DIM}${name} ... ${SKIP_TAG} (no score.meta.json)${RESET}`);
+                skipCount++;
+                continue;
+            }
+
+            if (meta.seed == null) {
+                console.error(`${FAIL_TAG} ${name}: score.meta.json has no seed`);
+                failCount++;
+                failures.push({ name, error: 'no seed in metadata' });
+                continue;
+            }
+
+            // Build a temporary config with a fixed seed matching the
+            // saved one, so the score stage issues the exact same request.
+            const recreateConfig = JSON.parse(JSON.stringify(config));
+            recreateConfig.score.seedMode = 'fixed';
+            recreateConfig.score.seed = meta.seed;
+
+            process.stderr.write(`${name} ... `);
+
+            try {
+                const out = await runScore(recreateConfig, folder);
+                const extra = out.title ? `  ${out.title}` : '';
+                process.stderr.write(`${OK_TAG}  seed=${meta.seed}${extra}\n`);
+                okCount++;
+            } catch (err) {
+                process.stderr.write(`${FAIL_TAG}  ${err.message.split('\n')[0]}\n`);
+                failCount++;
+                failures.push({ name, error: err.message });
+            }
+        }
+
+        console.log('');
+        console.log(`[recreate] ${okCount} processed, ${skipCount} skipped, ${failCount} failed.`);
+        console.log('');
+
+        if (failCount > 0) {
+            console.log('Failures:');
+            for (const f of failures) {
+                console.log(`  - ${f.name}  —  ${f.error.split('\n')[0]}`);
+            }
+            console.log('');
+            setExit(1);
+        }
+    });
+
+// =====================================================================
+// list — table view of every song
+// =====================================================================
+
+program
+    .command('list')
+    .description('Table view of every song and its pipeline status')
+    .action(async () => {
+        const config = loadConfig();
+        const folders = findSongFolders(config.paths.songsDir);
+
+        if (folders.length === 0) {
+            console.log('No songs yet. Run `resonate lyrics` to create some.');
+            return;
+        }
+
+        const OK = `${GREEN}${OK_TAG}${RESET}`;
+        const MISS = `${DIM}${SKIP_TAG}${RESET}`;
+
+        const table = new Table({
+            head: ['plan', 'lyrics', 'score', 'meta', 'midi', 'wav', 'song'],
+            colAligns: ['middle', 'middle', 'middle', 'middle', 'middle', 'middle', 'left'],
+            style: { head: [], border: [] },
+        });
+
+        for (const folder of folders) {
+            const has = (f) => fs.existsSync(path.join(folder, f));
+            const meta = readMeta(folder);
+
+            table.push([
+                has('plan.json') ? OK : MISS,
+                has('song.md') ? OK : MISS,
+                has('score.abc') ? OK : MISS,
+                meta ? OK : MISS,
+                has('score.mid') ? OK : MISS,
+                has('song.wav') ? OK : MISS,
+                path.basename(folder),
+            ]);
+        }
+
+        console.log('');
+        console.log(table.toString());
+        console.log('');
+        console.log(`${OK}=present  ${MISS}=missing`);
+        console.log('');
+    });
+
+// =====================================================================
+// show — detailed status for one song (or all)
+// =====================================================================
+
+program
+    .command('show [songFolder]')
+    .description('Detailed status for one song (or all songs)')
+    .action(async (songFolderArg) => {
+        const config = loadConfig();
+
+        let folders;
+        if (songFolderArg) {
+            folders = [resolveSongFolder(config, songFolderArg)];
+        } else {
+            folders = findSongFolders(config.paths.songsDir);
+        }
+
+        if (folders.length === 0) {
+            console.log('No songs found.');
+            return;
+        }
+
+        for (let i = 0; i < folders.length; i++) {
+            const folder = folders[i];
+            const name = path.basename(folder);
+
+            if (folders.length > 1) {
+                if (i > 0) console.log('');
+                console.log(`=== ${name} ===`);
+            } else {
+                console.log(name);
+            }
+
+            // Title from song.md
+            const songPath = path.join(folder, 'song.md');
+            if (fs.existsSync(songPath)) {
+                const content = fs.readFileSync(songPath, 'utf8');
+                const m = content.match(/^#\s+TITLE\s*\n+([^\n#]+)/m);
+                if (m) console.log(`  title         ${m[1].trim()}`);
+            }
+
+            // plan.json
+            const planPath = path.join(folder, 'plan.json');
+            if (fs.existsSync(planPath)) {
+                console.log(`  plan.json     [OK]  ${fs.statSync(planPath).size} bytes`);
+            } else {
+                console.log(`  plan.json     [--]`);
+            }
+
+            // song.md
+            if (fs.existsSync(songPath)) {
+                console.log(`  song.md       [OK]  ${fs.statSync(songPath).size} bytes`);
+            } else {
+                console.log(`  song.md       [--]`);
+            }
+
+            // score.abc
+            const abcPath = path.join(folder, 'score.abc');
+            if (fs.existsSync(abcPath)) {
+                console.log(`  score.abc     [OK]  ${fs.statSync(abcPath).size} bytes`);
+            } else {
+                console.log(`  score.abc     [--]`);
+            }
+
+            // score.meta.json
+            const meta = readMeta(folder);
+            if (meta) {
+                const requested = meta.requested_at
+                    ? new Date(meta.requested_at).toLocaleString()
+                    : '?';
+                console.log(`  score.meta    [OK]  seed=${meta.seed}`);
+                console.log(`                       model=${meta.model ?? '?'}`);
+                console.log(`                       elapsed=${(meta.elapsed_ms / 1000).toFixed(1)}s  requested=${requested}`);
+            } else {
+                console.log(`  score.meta    [--]`);
+            }
+
+            // score.mid
+            const midiPath = path.join(folder, 'score.mid');
+            if (fs.existsSync(midiPath)) {
+                console.log(`  score.mid     [OK]  ${fs.statSync(midiPath).size} bytes`);
+            } else {
+                console.log(`  score.mid     [--]`);
+            }
+
+            // score.human.mid
+            const humanPath = path.join(folder, 'score.human.mid');
+            if (fs.existsSync(humanPath)) {
+                const h = config.render.humanize;
+                const detail = h && h.enabled
+                    ? `  (timing ±${h.timingMs}ms, vel ±${h.velocity}, roll ${h.rollMs}ms)`
+                    : '';
+                console.log(`  score.human   [OK]  ${fs.statSync(humanPath).size} bytes${detail}`);
+            } else {
+                console.log(`  score.human   [--]`);
+            }
+
+            // song.wav
+            const wavPath = path.join(folder, 'song.wav');
+            if (fs.existsSync(wavPath)) {
+                const sizeMb = (fs.statSync(wavPath).size / 1024 / 1024).toFixed(1);
+                console.log(`  song.wav      [OK]  ${sizeMb} MB`);
+            } else {
+                console.log(`  song.wav      [--]`);
+            }
+        }
+
+        if (folders.length === 1) {
+            console.log('');
+        }
+    });
+
+// =====================================================================
+// meta — YuE2 generation info
+// =====================================================================
+
+program
+    .command('meta [songFolder]')
+    .description('Show the saved YuE2 generation info for a song (or all songs)')
+    .option('--json', 'print the raw JSON instead of a summary')
+    .action(async (songFolderArg, opts) => {
+        const config = loadConfig();
+
+        let folders;
+        if (songFolderArg) {
+            folders = [resolveSongFolder(config, songFolderArg)];
+        } else {
+            folders = findSongFolders(config.paths.songsDir);
+        }
+
+        if (folders.length === 0) {
+            console.log('No songs found.');
+            return;
+        }
+
+        for (let i = 0; i < folders.length; i++) {
+            const folder = folders[i];
+            const name = path.basename(folder);
+            const meta = readMeta(folder);
+
+            if (!meta) {
+                if (folders.length === 1) {
+                    console.error(`No score.meta.json in ${folder}`);
+                    setExit(1);
+                    return;
+                }
+                console.log(`${name}: [--] no score.meta.json`);
+                continue;
+            }
+
+            if (opts.json) {
+                if (folders.length > 1) {
+                    console.log(`=== ${name} ===`);
+                }
+                console.log(JSON.stringify(meta, null, 2));
+                if (i < folders.length - 1) console.log('');
+                continue;
+            }
+
+            // Summary view
+            if (folders.length > 1) {
+                if (i > 0) console.log('');
+                console.log(`=== ${name} ===`);
+            } else {
+                console.log(name);
+            }
+
+            const req = meta.requested_at
+                ? new Date(meta.requested_at).toLocaleString()
+                : '?';
+            const elapsed = typeof meta.elapsed_ms === 'number'
+                ? `${(meta.elapsed_ms / 1000).toFixed(1)}s`
+                : '?';
+
+            console.log(`  provider      ${meta.provider ?? '?'}`);
+            console.log(`  model         ${meta.model ?? '?'}`);
+            console.log(`  endpoint      ${meta.endpoint ?? '?'}`);
+            console.log(`  seed          ${meta.seed ?? '?'}`);
+            console.log(`  requested     ${req}`);
+            console.log(`  elapsed       ${elapsed}`);
+            if (meta.response_summary) {
+                const rs = meta.response_summary;
+                console.log(`  abc           ${rs.abc_length ?? '?'} bytes, ${rs.abc_lines ?? '?'} lines`);
+            }
+            if (folders.length === 1 && meta.recreate_hint) {
+                console.log('');
+                console.log(`  recreate      resonate recreate ${name}`);
+            }
+        }
+
+        console.log('');
+    });
+
+// =====================================================================
+// plan — dev tool (hidden from help)
+// =====================================================================
+
+program
+    .command('plan', { hidden: true })
     .description('Generate a single song plan (dev tool; writes JSON to stdout)')
     .option('-t, --theme <text>')
     .option('-g, --genre <text>')
@@ -324,11 +661,11 @@ program
     });
 
 // =====================================================================
-// write — dev tool
+// write — dev tool (hidden from help)
 // =====================================================================
 
 program
-    .command('write <planJson>')
+    .command('write <planJson>', { hidden: true })
     .description('Write lyrics from plan.json (dev tool; creates a song folder)')
     .action(async (planJson) => {
         const config = loadConfig();
@@ -342,45 +679,11 @@ program
     });
 
 // =====================================================================
-// list
+// default action: no arguments prints the help text
 // =====================================================================
 
-program
-    .command('list')
-    .description('List all songs and which stages have been completed')
-    .action(async () => {
-        const config = loadConfig();
-        const folders = findSongFolders(config.paths.songsDir);
-
-        if (folders.length === 0) {
-            console.log('No songs yet. Run `resonate lyrics` to create some.');
-            return;
-        }
-
-        const OK = `${GREEN}${OK_TAG}${RESET}`;
-        const MISS = `${DIM}${SKIP_TAG}${RESET}`;
-
-        const table = new Table({
-            head: ['plan', 'lyrics', 'score', 'midi', 'wav', 'song'],
-            colAligns: ['middle', 'middle', 'middle', 'middle', 'middle', 'left'],
-            style: { head: [], border: [] },
-        });
-
-        for (const folder of folders) {
-            const has = (f) => fs.existsSync(path.join(folder, f));
-            table.push([
-                has('plan.json') ? OK : MISS,
-                has('song.md') ? OK : MISS,
-                has('score.abc') ? OK : MISS,
-                has('score.mid') ? OK : MISS,
-                has('song.wav') ? OK : MISS,
-                path.basename(folder),
-            ]);
-        }
-
-        console.log('');
-        console.log(table.toString());
-        console.log('');
-    });
+program.action(() => {
+    program.help();
+});
 
 await program.parseAsync(process.argv);
