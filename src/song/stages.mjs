@@ -8,7 +8,6 @@ import { Planner } from './lyrics/planner.mjs';
 import { SongWriter } from './lyrics/writer.mjs';
 import { SongScorer } from './score/generator.mjs';
 import { parseSongMarkdown } from './lyrics/parser.mjs';
-import { patchMscz } from './pdf-meta.mjs';
 
 // Silent execa — output captured, thrown only on failure.
 async function run(cmd, args, { cwd } = {}) {
@@ -146,75 +145,6 @@ export async function runRender(config, songFolder, {
 }
 
 // =====================================================================
-// pdf  (score.mid -> score.mscz -> patch -> score.pdf)
-// =====================================================================
-
-export async function runPdf(config, songFolder, {
-    title,
-    composer,
-} = {}) {
-    const midiPath = path.join(songFolder, 'score.mid');
-    const msczPath = path.join(songFolder, 'score.mscz');
-    const pdfPath = path.join(songFolder, 'score.pdf');
-
-    if (!fs.existsSync(midiPath)) {
-        throw new Error(`Missing score.mid in ${songFolder}`);
-    }
-
-    const musescore = config.render.musescorePath;
-    if (!musescore) {
-        throw new Error('Set render.musescore_path in config.yaml.');
-    }
-    if (!fs.existsSync(musescore)) {
-        throw new Error(`MuseScore not found: ${musescore}`);
-    }
-
-    if (title == null) {
-        const songPath = path.join(songFolder, 'song.md');
-        if (fs.existsSync(songPath)) {
-            try {
-                const parsed = parseSongMarkdown(fs.readFileSync(songPath, 'utf8'));
-                if (parsed.title) title = parsed.title;
-            } catch { /* ignore */ }
-        }
-    }
-    if (composer == null) {
-        composer = config.render.composer ?? null;
-    }
-
-    // --- Step 1: MIDI -> MSCZ ---
-    const job1 = path.join(songFolder, '.musescore-1.json');
-    fs.writeFileSync(job1, JSON.stringify([{ in: 'score.mid', out: 'score.mscz' }]), 'utf8');
-    try {
-        await run(musescore, ['-j', job1], { cwd: songFolder });
-    } finally {
-        try { fs.unlinkSync(job1); } catch { }
-    }
-
-    if (!fs.existsSync(msczPath)) {
-        throw new Error(`MuseScore did not produce ${msczPath}`);
-    }
-
-    // --- Step 2: patch title + composer into the MSCZ XML ---
-    await patchMscz(msczPath, { title, composer });
-
-    // --- Step 3: MSCZ -> PDF ---
-    const job2 = path.join(songFolder, '.musescore-2.json');
-    fs.writeFileSync(job2, JSON.stringify([{ in: 'score.mscz', out: 'score.pdf' }]), 'utf8');
-    try {
-        await run(musescore, ['-j', job2], { cwd: songFolder });
-    } finally {
-        try { fs.unlinkSync(job2); } catch { }
-    }
-
-    if (!fs.existsSync(pdfPath)) {
-        throw new Error(`MuseScore did not produce ${pdfPath}`);
-    }
-
-    return { pdfPath, msczPath, midiPath, title, composer };
-}
-
-// =====================================================================
 // song  (full pipeline)
 // =====================================================================
 
@@ -222,7 +152,6 @@ export async function runSong(config, {
     theme, genre, mood,
     dryScore = false,
     keep = false,
-    pdf = false,
 } = {}) {
     const plan = await runPlan(config, { theme, genre, mood });
     const writer = await runWrite(config, plan);
@@ -230,17 +159,11 @@ export async function runSong(config, {
     const midi = await runMidi(config, writer.folder);
     const render = await runRender(config, writer.folder, { keep });
 
-    let pdfResult = null;
-    if (pdf) {
-        pdfResult = await runPdf(config, writer.folder);
-    }
-
     return {
         ...writer,
         abcPath: path.join(writer.folder, 'score.abc'),
         midiPath: midi.midiPath,
         wavPath: render.wavPath,
-        pdfPath: pdfResult?.pdfPath ?? null,
     };
 }
 

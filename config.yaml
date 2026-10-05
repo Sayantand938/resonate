@@ -35,4 +35,3 @@ render:
   lufs: -14
   timeout_seconds: 300
   composer: Sayantan
-  musescore_path: "C:/Program Files/MuseScore 4/bin/MuseScore4.exe"
