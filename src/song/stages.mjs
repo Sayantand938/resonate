@@ -58,7 +58,7 @@ export async function runMidi(config, songFolder, {
     tempo,
     title,
     composer,
-    engine,   // override config default: 'abcjs' | 'abc2midi'
+    engine,
 } = {}) {
     const abcPath = path.join(songFolder, 'score.abc');
     const midiPath = path.join(songFolder, 'score.mid');
@@ -80,7 +80,6 @@ export async function runMidi(config, songFolder, {
 
     const chosenEngine = engine ?? config.render.abcEngine ?? 'abcjs';
 
-    // Per-channel map for abcjs.
     const vp = config.render.voicePrograms ?? {};
     const programMap = {
         0: vp.melody ?? 0,
@@ -91,7 +90,6 @@ export async function runMidi(config, songFolder, {
         .map(([ch, prog]) => `${ch}:${prog}`)
         .join(',');
 
-    // Per-voice map for abc2midi.
     const voiceProgramStr = [
         `Vocal:${vp.melody ?? 0}`,
         `Ins:${vp.ins ?? 0}`,
@@ -166,30 +164,6 @@ export async function runRender(config, songFolder, {
         throw new Error(`midi2wav did not produce ${wavPath}`);
     }
     return { wavPath, midiPath };
-}
-
-// =====================================================================
-// song  (full pipeline)
-// =====================================================================
-
-export async function runSong(config, {
-    theme, genre, mood,
-    keep = false,
-    engine,
-} = {}) {
-    const plan = await runPlan(config, { theme, genre, mood });
-    const writer = await runWrite(config, plan);
-    await runScore(config, writer.folder);
-    const midi = await runMidi(config, writer.folder, { engine });
-    const render = await runRender(config, writer.folder, { keep });
-
-    return {
-        ...writer,
-        abcPath: path.join(writer.folder, 'score.abc'),
-        midiPath: midi.midiPath,
-        wavPath: render.wavPath,
-        engine: midi.engine,
-    };
 }
 
 // =====================================================================

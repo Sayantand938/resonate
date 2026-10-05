@@ -1,80 +1,61 @@
 # resonate
 
-Turn a one-line idea into a finished song.
-
-You give it a theme, it plans the song, writes the lyrics, generates the score,
-converts it to MIDI, and renders a mastered WAV — all in one command.
+Generate songs end-to-end.
 
 ```
-theme  →  lyrics  →  ABC  →  MIDI  →  WAV
+theme → lyrics → ABC → MIDI → WAV
 ```
-
-## What you get
-
-A folder per song under `songs/`:
-
-```
-songs/2026-10-05-exit-sign-to-somewhere/
-├── plan.json    the creative plan behind the song
-├── song.md      the lyrics and style
-├── score.abc    the musical score
-├── score.mid    the MIDI file
-└── song.wav     the final audio
-```
-
-Every stage writes into the same folder. You can run the whole pipeline at
-once, or stop and rerun any stage on its own.
 
 ## Install
 
-Requires Node 22+, `pnpm`, `fluidsynth`, and `ffmpeg` on your PATH.
+Requires Node 22+, `pnpm`, `fluidsynth`, `ffmpeg`, and a running YuE2
+server on `http://127.0.0.1:8080` for the score stage.
 
 ```powershell
 pnpm install
-Copy-Item .env.example .env     # then edit .env and set AI_API=<your key>
-pnpm run install-soundfont      # one-time download (~31 MB)
+Copy-Item .env.example .env     # set AI_API=<your key>
+pnpm run install-soundfont      # one-time ~31 MB download
 ```
 
 ## Use
 
-### Full song
-
 ```powershell
-resonate song
-resonate song --theme "missing someone on a rainy Tokyo night"
-resonate song --theme "..." --genre "R&B" --mood "wistful"
-```
+# Create new songs (plan + lyrics only)
+resonate lyrics --n 10 --genre "indie pop"
+resonate lyrics --theme "rainy Tokyo at night"
 
-### Offline (no score server)
+# Generate the rest of the pipeline
+resonate score              # all songs that need it
+resonate midi               # all songs that need it
+resonate render             # all songs that need it
+resonate all                # score → midi → render
 
-```powershell
-resonate song --theme "..." --dry-score
-```
+# One song only
+resonate score  songs\2026-10-05-neon-on-the-window
+resonate all    songs\2026-10-05-neon-on-the-window
 
-Skips the score server and uses a placeholder score. Useful for testing the
-rest of the pipeline.
+# Redo existing outputs
+resonate score --force
+resonate all   --force
 
-### One stage at a time
+# Pick a MIDI engine
+resonate midi --engine abc2midi
+resonate all  --engine abcjs
 
-```powershell
-resonate plan   --theme "..." -o plan.json
-resonate write  plan.json
-resonate score  songs\<folder> [--dry-run]
-resonate midi   songs\<folder>
-resonate render songs\<folder>
-```
-
-Each stage reads from the song folder and writes back into it.
-
-### See what you've made
-
-```powershell
+# See status
 resonate list
 ```
 
-Shows every song and which stages have been completed.
+Every stage skips songs whose output already exists. Ctrl+C any time;
+resume by running the same command again.
 
-## That's it
+## Layout
 
-If `resonate song` finishes and `songs\<folder>\song.wav` plays, everything
-worked.
+```
+songs/<date>-<slug>/
+├── plan.json    creative plan        (source)
+├── song.md      lyrics + style       (source)
+├── score.abc    ABC notation         (source)
+├── score.mid    MIDI                 (regenerable)
+└── song.wav     final audio          (regenerable)
+```

@@ -1,0 +1,31 @@
+{
+  "title": "Three-Seventeen at the Blue Hour",
+  "genre": "indie pop / alt-R&B",
+  "mood": "restless, tender, quietly hopeful",
+  "theme": "Reconciliation begins not with a grand apology, but with showing up before the morning ends.",
+  "story": "At 3:17 a.m., the narrator receives a voicemail from their estranged father asking them to meet at the twenty-four-hour diner where he works. They bike through rain, replaying the message and remembering every unanswered call. The father admits he has no speech prepared, only coffee and a desire to see his child before sunrise. They do not solve the past, but share breakfast beneath the blue diner sign and leave with a real plan to meet again.",
+  "setting": "A rain-slick city between 3:17 a.m. and dawn, moving from a dark apartment and empty bike lanes to a fluorescent roadside diner smelling of coffee, wet pavement, and toasted bread.",
+  "perspective": "First person, an adult child narrating in the present while briefly flashing back to years of missed calls.",
+  "motifs": [
+    "a 3:17 a.m. voicemail",
+    "blue diner lettering",
+    "bicycle spokes scattering streetlight",
+    "coffee steam on a window",
+    "rainwater on a phone screen",
+    "two untouched plates becoming breakfast"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop / alt-R&B, 104 BPM; tender, restless, hopeful; intimate conversational lead vocal with a bruised upper register; rubbery synth bass, clean electric guitar, Rhodes piano, crisp drum kit, muted trumpet. Build toward a wide communal final chorus with a brief half-time bridge; glossy nocturnal production with rain-slick shimmer."
+}

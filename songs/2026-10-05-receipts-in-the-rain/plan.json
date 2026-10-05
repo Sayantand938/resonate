@@ -1,0 +1,31 @@
+{
+  "title": "Receipts in the Rain",
+  "genre": "indie pop with alt-R&B inflections",
+  "mood": "tender, restless, quietly triumphant",
+  "theme": "A person turns an unfinished breakup into a deliberate act of self-forgiveness.",
+  "story": "After closing the overnight grocery store, the narrator finds a year-old receipt tucked inside a jacket from the night their relationship ended. They ride the last bus across town, revisiting the places listed on the receipt and rehearsing all the apologies they never gave. At the closed laundromat where they first met, they finally tear the receipt into pieces instead of sending another message. By sunrise, they return home lighter, leaving the ex's number unsent and buying coffee for the driver.",
+  "setting": "A rainy city after midnight: fluorescent grocery aisles, fogged bus windows, shuttered laundromats, wet pavement reflecting pharmacy signs, and a pale sunrise at the narrator's apartment.",
+  "perspective": "First person, present tense, with the narrator privately narrating the night as they travel.",
+  "motifs": [
+    "a faded grocery receipt",
+    "fogged bus glass",
+    "coin-operated laundromat machines",
+    "blue pharmacy light",
+    "coffee in a paper cup",
+    "paper tearing in the rain"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop with alt-R&B inflections, 104 BPM, tender and restless, intimate conversational lead vocal with a warm lift in the chorus; electric piano, muted guitar, rounded synth bass, crisp drums, subtle string pad. Build from nocturnal restraint into a bright final release, with glossy late-night production and softly saturated vocal layers."
+}

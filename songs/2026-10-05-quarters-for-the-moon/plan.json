@@ -1,0 +1,31 @@
+{
+  "title": "Quarters for the Moon",
+  "genre": "upbeat indie pop with soulful R&B inflections",
+  "mood": "restless, tender, unexpectedly hopeful",
+  "theme": "A chance encounter in a twenty-four-hour laundromat helps two strangers choose motion over returning to lives that no longer fit.",
+  "story": "At 2:17 a.m. in a fluorescent laundromat, the narrator discovers a stranger folding one tiny baby shirt among their own clothes. They trade quarters, coffee, and half-truths while both avoid answering messages from people waiting at home. When the washing machines stop, the stranger reveals they are leaving town before sunrise, and the narrator impulsively decides to drive them to the bus station. They part beneath the station clock, changed not by romance but by finally making one honest decision.",
+  "setting": "A twenty-four-hour laundromat on the edge of town in late autumn, with rain-striped windows, humming machines, burnt coffee, detergent scent, and a nearly empty bus station before dawn.",
+  "perspective": "First person, present-tense narrator recounting the night as it unfolds.",
+  "motifs": [
+    "spinning silver washing machines",
+    "loose quarters in a paper cup",
+    "one miniature baby shirt",
+    "rain on fluorescent windows",
+    "a cracked vending-machine coffee",
+    "the bus station clock at 4:40"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Upbeat indie pop with soulful R&B inflections, 112 BPM, restless and tender, intimate conversational lead vocal; electric piano, muted guitar, warm synth bass, crisp drum kit, glockenspiel. Build from a close two-person groove into a wide, luminous final chorus. Polished nocturnal production with soft tape saturation and bright fluorescent shimmer."
+}

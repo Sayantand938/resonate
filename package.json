@@ -14,8 +14,6 @@
     "README.md"
   ],
   "scripts": {
-    "song": "node bin/cli.js song",
-    "plan": "node bin/cli.js plan",
     "list": "node bin/cli.js list",
     "install-soundfont": "powershell -ExecutionPolicy Bypass -File install-soundfont.ps1"
   },

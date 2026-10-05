@@ -1,0 +1,31 @@
+{
+  "title": "The Aquarium Closes at Midnight",
+  "genre": "indie pop with subtle R&B inflections",
+  "mood": "tender, nocturnal, quietly triumphant",
+  "theme": "Healing begins when you stop waiting for someone to return and learn to make a life that glows on its own.",
+  "story": "A night-shift aquarium cleaner keeps finding small reminders of an ex in the closed blue galleries: a forgotten hair tie, a name scratched into a bench, a voicemail saved but never played. On the evening the ex is due to collect their last box, the narrator prepares the apartment like a museum of their relationship. The ex cancels by text, and instead of collapsing, the narrator walks back to the aquarium and releases a rescued moon jelly into the main tank. By sunrise, the empty apartment feels less like abandonment and more like a room finally available for something new.",
+  "setting": "A public aquarium after closing, in late autumn; blue tank light spills across wet tile, filtration pumps hum under the floor, and dawn rain beads on the staff entrance.",
+  "perspective": "First person, present tense, a night-shift aquarium cleaner speaking directly to the absent ex.",
+  "motifs": [
+    "moon jellyfish",
+    "a hair tie on a bench",
+    "blue light on wet tile",
+    "an unopened voicemail",
+    "the staff entrance at dawn",
+    "an empty cardboard box"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop with subtle R&B inflections, 104 BPM, tender and nocturnal with a quietly triumphant lift. Intimate clear lead vocal with restrained ache, electric piano, muted guitar, warm synth bass, crisp drum kit, and glassy mallet tones. Build from close-room minimalism into a luminous final chorus. Polished production with wet, reflective textures."
+}
