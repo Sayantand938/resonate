@@ -1,0 +1,36 @@
+paths:
+  songs_dir: songs
+
+api:
+  base_url: https://api.aicredits.in/v1
+
+lyrics:
+  planner_model: openai/gpt-5.6-luna
+  planner_prompt_file: src/song/lyrics/prompts/planner.md
+  planner_temperature: 1.0
+
+  writer_model: openai/gpt-5.6-luna
+  writer_prompt_file: src/song/lyrics/prompts/writer.md
+  writer_temperature: 0.9
+  max_tokens: 4000
+
+  save_plan: true
+  date_prefix_filenames: true
+
+score:
+  provider: yue2
+  base_url: http://127.0.0.1:8080
+  endpoint: /v1/tasks/run
+  model: yue2-music
+  cot: full
+  stop_after: abc
+  seed: 1234
+  num_inference_steps: 32
+  timeout_seconds: 600
+
+render:
+  soundfont: null
+  sample_rate: 44100
+  gain: 1.0
+  lufs: -14
+  timeout_seconds: 300

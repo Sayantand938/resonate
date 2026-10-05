@@ -1,0 +1,51 @@
+{
+  "name": "resonate",
+  "version": "0.1.0",
+  "description": "Generate songs end-to-end: theme → lyrics → ABC → MIDI → production-ready WAV",
+  "type": "module",
+  "bin": {
+    "resonate": "./bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "src/",
+    "config.yaml",
+    "README.md"
+  ],
+  "scripts": {
+      "song": "node bin/cli.js song",
+      "plan": "node bin/cli.js plan",
+      "list": "node bin/cli.js list",
+      "install-soundfont": "powershell -ExecutionPolicy Bypass -File install-soundfont.ps1"
+  },
+  "keywords": [
+    "music",
+    "song",
+    "abc",
+    "abcjs",
+    "midi",
+    "wav",
+    "yue2",
+    "llm",
+    "openai",
+    "fluidsynth",
+    "cli"
+  ],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "dependencies": {
+    "abcjs": "^6.4.4",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "execa": "^10.0.1",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.77.0",
+    "ora": "^9.4.1"
+  }
+}

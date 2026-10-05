@@ -1,0 +1,31 @@
+{
+  "title": "Exit Sign to Somewhere",
+  "genre": "midtempo contemporary R&B with dreamy pop textures",
+  "mood": "restless, hopeful, weightless",
+  "theme": "Escaping home is less about finding a perfect place and more about choosing a life where fear no longer makes every decision.",
+  "story": "After another sleepless night in a crowded house, the narrator stuffs clothes and a half-charged phone into a red duffel bag before sunrise. They leave a note on the kitchen table and catch the first northbound bus, watching familiar streets dissolve through rain-streaked glass. Midway through the trip, a voicemail from home reveals that running away has not erased the people or pain being left behind. Instead of turning back, the narrator keeps going, deciding to build peace gradually in a seaside town where nobody knows their old name.",
+  "setting": "A humid city neighborhood just before dawn, then a rain-washed intercity bus heading toward a cold coastal town; flickering kitchen light, wet pavement, diesel windows, and pale ocean fog.",
+  "perspective": "First person, present tense, as a young adult leaving home alone while privately wrestling with guilt and relief.",
+  "motifs": [
+    "a red duffel bag",
+    "a kitchen-table goodbye note",
+    "rain on bus windows",
+    "a one-way ticket",
+    "flickering streetlights",
+    "distant ocean fog"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Dreamy contemporary R&B with subtle pop crossover, 94 BPM, restless, hopeful, weightless; intimate velvet-toned lead vocal with close harmonies; Rhodes piano, muted electric guitar, warm sub bass, crisp programmed drums, glassy synths. Build from restrained verses into a wide, memorable chorus, with a polished late-night production texture and soft tape saturation."
+}
