@@ -35,3 +35,11 @@ render:
   lufs: -14
   timeout_seconds: 300
   composer: Sayantan
+
+  # MIDI program numbers per role. See General MIDI spec for the full list.
+  # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar
+  # 32=Acoustic Bass        33=Fingered Bass  34=Picked Bass    48=Strings
+  voice_programs:
+    melody: 24    # V: Vocal  → Nylon String Guitar
+    ins:    24    # V: Ins    → Nylon String Guitar
+    chords: 0     # auto-generated chord bed → Acoustic Grand Piano

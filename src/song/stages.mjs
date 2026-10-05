@@ -79,12 +79,28 @@ export async function runMidi(config, songFolder, {
         composer = config.render.composer ?? null;
     }
 
+    // Build the channel→program map from config.render.voicePrograms.
+    // abcjs produces this channel layout for typical ABC input:
+    //   channel 0 → V: Vocal (melody)
+    //   channel 1 → V: Ins   (countermelody)
+    //   channel 2 → auto-expanded chord symbols (chords)
+    const vp = config.render.voicePrograms ?? {};
+    const programMap = {
+        0: vp.melody ?? 0,
+        1: vp.ins ?? 0,
+        2: vp.chords ?? 0,
+    };
+    const programsStr = Object.entries(programMap)
+        .map(([ch, prog]) => `${ch}:${prog}`)
+        .join(',');
+
     const root = projectRoot();
     const args = [path.join(root, 'scripts', 'abc2midi.mjs'), abcPath, midiPath];
     if (program != null) args.push('--program', String(program));
     if (tempo != null) args.push('--tempo', String(tempo));
     if (title != null) args.push('--title', String(title));
     if (composer != null) args.push('--composer', String(composer));
+    args.push('--programs', programsStr);
 
     await run('node', args);
 

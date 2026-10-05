@@ -37,6 +37,8 @@ export function loadConfig(configPathOverride) {
     const writerModel = lyricsRaw.writer_model ?? 'openai/gpt-5.6-luna';
     const plannerModel = lyricsRaw.planner_model ?? writerModel;
 
+    const voiceProgramsRaw = renderRaw.voice_programs ?? {};
+
     const cfg = {
         root: base,
         paths: {
@@ -74,7 +76,16 @@ export function loadConfig(configPathOverride) {
             lufs: Number(renderRaw.lufs ?? -14),
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
-            musescorePath: renderRaw.musescore_path ?? null,
+
+            // General MIDI program numbers per voice role.
+            // abcjs assigns channels as: 0 = V: Vocal, 1 = V: Ins,
+            // 2 = auto-expanded chord symbols. See config.yaml for
+            // common program numbers.
+            voicePrograms: {
+                melody: Number(voiceProgramsRaw.melody ?? 0),
+                ins: Number(voiceProgramsRaw.ins ?? 0),
+                chords: Number(voiceProgramsRaw.chords ?? 0),
+            },
         },
         apiKey,
     };

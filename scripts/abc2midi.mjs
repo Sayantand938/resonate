@@ -4,7 +4,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { injectTitleAndComposer } from '../src/song/midi-meta.mjs';
+import {
+    injectTitleAndComposer,
+    injectPrograms,
+} from '../src/song/midi-meta.mjs';
+import { remapChannels } from '../src/song/midi-remap.mjs';
 
 if (typeof globalThis.window === 'undefined') {
     globalThis.window = globalThis;
@@ -16,6 +20,7 @@ function parseArgs(argv) {
     const out = {
         positional: [],
         program: null,
+        programs: null,
         tempo: null,
         title: null,
         composer: null,
@@ -23,6 +28,7 @@ function parseArgs(argv) {
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--program') out.program = Number(argv[++i]);
+        else if (a === '--programs') out.programs = argv[++i];
         else if (a === '--tempo') out.tempo = Number(argv[++i]);
         else if (a === '--title') out.title = argv[++i];
         else if (a === '--composer') out.composer = argv[++i];
@@ -31,11 +37,12 @@ function parseArgs(argv) {
     return out;
 }
 
-const { positional, program, tempo, title, composer } = parseArgs(process.argv.slice(2));
+const { positional, program, programs, tempo, title, composer } =
+    parseArgs(process.argv.slice(2));
 const [inPath, outPath] = positional;
 
 if (!inPath || !outPath) {
-    console.error('Usage: node scripts/abc2midi.mjs <in.abc> <out.mid> [--program N] [--tempo BPM] [--title TEXT] [--composer TEXT]');
+    console.error('Usage: node scripts/abc2midi.mjs <in.abc> <out.mid> [--program N | --programs c0,c1,c2] [--tempo BPM] [--title TEXT] [--composer TEXT]');
     process.exit(1);
 }
 if (!fs.existsSync(inPath)) {
@@ -68,7 +75,33 @@ if (!Array.isArray(htmlArray) || htmlArray.length === 0) {
 }
 
 let midiBuffer = extractMidiFromHtml(htmlArray[0]);
+
+// 1. Metadata (title + composer) into track 0
 midiBuffer = injectTitleAndComposer(midiBuffer, { title, composer });
+
+// 2. Remap channels: each non-conductor track gets its own dedicated channel.
+//    Track 1 → ch 0, track 2 → ch 1, track 3 → ch 2, ...
+//    This is required because abcjs reuses channel 0 across multiple tracks.
+midiBuffer = remapChannels(midiBuffer, { 1: 0, 2: 1, 3: 2, 4: 3 });
+
+// 3. Per-channel program changes
+if (programs) {
+    const map = {};
+    if (programs.includes(':')) {
+        for (const pair of programs.split(',')) {
+            const [ch, prog] = pair.split(':').map((s) => Number(s.trim()));
+            if (Number.isInteger(ch) && Number.isInteger(prog)) {
+                map[ch] = prog;
+            }
+        }
+    } else {
+        programs.split(',').forEach((p, i) => {
+            const prog = Number(p.trim());
+            if (Number.isInteger(prog)) map[i] = prog;
+        });
+    }
+    midiBuffer = injectPrograms(midiBuffer, map);
+}
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, midiBuffer);
