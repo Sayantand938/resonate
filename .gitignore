@@ -89,8 +89,9 @@ $RECYCLE.BIN/
 
 ### resonate — pipeline artifacts ###
 
-# Regenerable per-song outputs. Keep song.md and plan.json; ignore the rest.
-songs/**/score.abc
+# Keep song.md, plan.json, and score.abc — they're the source of truth.
+# Ignore everything downstream that can be regenerated.
+
 songs/**/score.mid
 songs/**/song.wav
 songs/**/.score.loud.mid
@@ -99,17 +100,4 @@ songs/**/.musescore-*.json
 songs/**/convert.json
 songs/**/*.bak
 songs/**/score-meta.mid
-
-# Stray intermediates anywhere else
-*.loud.mid
-score-*.wav
-score-*.png
-*-spectrum.png
-loudnorm.txt
-*.download
-
-# Stray root-level plan.json (from ad-hoc `resonate plan -o plan.json`)
-/plan.json
-
-# YuE2 debug dump (written on failed parse)
-yue2_debug_response.json
+songs/**/score.pdf
