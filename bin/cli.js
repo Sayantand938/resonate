@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // bin/cli.js — the resonate CLI.
-// One binary. Subcommands: plan, write, score, midi, render, song, list.
+// One binary. Subcommands: plan, write, score, midi, render, pdf, song, list.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import Table from 'cli-table3';
 
 import { loadConfig } from '../src/song/config.mjs';
-import { runPlan, runWrite, runScore, runMidi, runRender, runSong }
+import { runPlan, runWrite, runScore, runMidi, runRender, runPdf, runSong }
     from '../src/song/stages.mjs';
 import { resolveSongFolder, findSongFolders } from '../src/song/paths.mjs';
 
@@ -16,16 +16,14 @@ const program = new Command();
 
 program
     .name('resonate')
-    .description('Song generation: theme → lyrics → ABC → MIDI → WAV')
+    .description('Song generation: theme → lyrics → ABC → MIDI → WAV (+ PDF)')
     .version('0.1.0');
 
 // =====================================================================
 // console helpers
 // =====================================================================
 
-// ANSI colors (no emoji). cli-table3 strips these for width computation.
 const GREEN = '\x1b[32m';
-const RED = '\x1b[31m';
 const DIM = '\x1b[2m';
 const RESET = '\x1b[0m';
 
@@ -33,10 +31,6 @@ const OK_TAG = '[OK]';
 const FAIL_TAG = '[!!]';
 const MISS_TAG = '[--]';
 
-/**
- * Run an async fn, printing `label ... [OK]` on success or
- * `label ... [!!]` on failure. No spinner, no emoji, no TTY requirements.
- */
 async function step(label, fn) {
     process.stderr.write(`${label} ... `);
     try {
@@ -57,20 +51,22 @@ function printSongSummary(result, { showPlan = false } = {}) {
     if (result.abcPath) console.log(`  abc   → ${path.basename(result.abcPath)}`);
     if (result.midiPath) console.log(`  midi  → ${path.basename(result.midiPath)}`);
     if (result.wavPath) console.log(`  wav   → ${path.basename(result.wavPath)}`);
+    if (result.pdfPath) console.log(`  pdf   → ${path.basename(result.pdfPath)}`);
 }
 
 // =====================================================================
-// song — full pipeline
+// song
 // =====================================================================
 
 program
     .command('song')
-    .description('Full pipeline: plan → write → score → midi → render')
+    .description('Full pipeline: plan → write → score → midi → render [→ pdf]')
     .option('-t, --theme <text>', 'theme seed')
     .option('-g, --genre <text>', 'genre seed')
     .option('-m, --mood <text>', 'mood seed')
     .option('--dry-score', 'skip YuE2; use a placeholder score (offline)')
     .option('--keep', 'keep intermediate files')
+    .option('--pdf', 'also export a PDF of the score via MuseScore')
     .action(async (opts) => {
         const config = loadConfig();
 
@@ -81,6 +77,7 @@ program
                 mood: opts.mood,
                 dryScore: Boolean(opts.dryScore),
                 keep: Boolean(opts.keep),
+                pdf: Boolean(opts.pdf),
             })
         );
 
@@ -101,7 +98,6 @@ program
     .option('-o, --output <file>', 'write plan to this file instead of stdout')
     .action(async (opts) => {
         const config = loadConfig();
-
         const plan = await step('Planning the song', () =>
             runPlan(config, {
                 theme: opts.theme,
@@ -151,7 +147,6 @@ program
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
         const folder = resolveSongFolder(config, songFolderArg);
-
         const label = opts.dryRun ? 'Scoring (placeholder)' : 'Scoring with YuE2';
 
         const result = await step(label, () =>
@@ -170,6 +165,8 @@ program
     .description('Convert score.abc → score.mid via abcjs')
     .option('-p, --program <n>', 'override GM program (0-127)', parseInt)
     .option('-t, --tempo <bpm>', 'override tempo (BPM)', parseInt)
+    .option('--title <text>', 'score title (default: from song.md)')
+    .option('--composer <text>', 'composer (default: from config.yaml)')
     .action(async (songFolderArg, opts) => {
         const config = loadConfig();
         const folder = resolveSongFolder(config, songFolderArg);
@@ -178,6 +175,8 @@ program
             runMidi(config, folder, {
                 program: opts.program,
                 tempo: opts.tempo,
+                title: opts.title,
+                composer: opts.composer,
             })
         );
 
@@ -212,6 +211,29 @@ program
     });
 
 // =====================================================================
+// pdf
+// =====================================================================
+
+program
+    .command('pdf <songFolder>')
+    .description('Export score.mid → score.pdf via MuseScore')
+    .option('--title <text>', 'override title (default: from song.md)')
+    .option('--composer <text>', 'override composer (default: from config.yaml)')
+    .action(async (songFolderArg, opts) => {
+        const config = loadConfig();
+        const folder = resolveSongFolder(config, songFolderArg);
+
+        const result = await step('Exporting PDF', () =>
+            runPdf(config, folder, {
+                title: opts.title,
+                composer: opts.composer,
+            })
+        );
+
+        console.log(`\n  ${result.pdfPath}\n`);
+    });
+
+// =====================================================================
 // list
 // =====================================================================
 
@@ -231,8 +253,8 @@ program
         const MISS = `${DIM}${MISS_TAG}${RESET}`;
 
         const table = new Table({
-            head: ['plan', 'lyrics', 'score', 'midi', 'wav', 'song'],
-            colAligns: ['middle', 'middle', 'middle', 'middle', 'middle', 'left'],
+            head: ['plan', 'lyrics', 'score', 'midi', 'wav', 'pdf', 'song'],
+            colAligns: ['middle', 'middle', 'middle', 'middle', 'middle', 'middle', 'left'],
             style: { head: [], border: [] },
         });
 
@@ -244,6 +266,7 @@ program
                 has('score.abc') ? OK : MISS,
                 has('score.mid') ? OK : MISS,
                 has('song.wav') ? OK : MISS,
+                has('score.pdf') ? OK : MISS,
                 path.basename(folder),
             ]);
         }

@@ -73,6 +73,8 @@ export function loadConfig(configPathOverride) {
             gain: Number(renderRaw.gain ?? 1.0),
             lufs: Number(renderRaw.lufs ?? -14),
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
+            composer: renderRaw.composer ?? null,
+            musescorePath: renderRaw.musescore_path ?? null,
         },
         apiKey,
     };

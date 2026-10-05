@@ -4,6 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { injectTitleAndComposer } from '../src/song/midi-meta.mjs';
 
 if (typeof globalThis.window === 'undefined') {
     globalThis.window = globalThis;
@@ -12,21 +13,29 @@ if (typeof globalThis.window === 'undefined') {
 const abcjs = (await import('abcjs')).default;
 
 function parseArgs(argv) {
-    const out = { positional: [], program: null, tempo: null };
+    const out = {
+        positional: [],
+        program: null,
+        tempo: null,
+        title: null,
+        composer: null,
+    };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--program') out.program = Number(argv[++i]);
         else if (a === '--tempo') out.tempo = Number(argv[++i]);
+        else if (a === '--title') out.title = argv[++i];
+        else if (a === '--composer') out.composer = argv[++i];
         else out.positional.push(a);
     }
     return out;
 }
 
-const { positional, program, tempo } = parseArgs(process.argv.slice(2));
+const { positional, program, tempo, title, composer } = parseArgs(process.argv.slice(2));
 const [inPath, outPath] = positional;
 
 if (!inPath || !outPath) {
-    console.error('Usage: node scripts/abc2midi.mjs <in.abc> <out.mid> [--program N] [--tempo BPM]');
+    console.error('Usage: node scripts/abc2midi.mjs <in.abc> <out.mid> [--program N] [--tempo BPM] [--title TEXT] [--composer TEXT]');
     process.exit(1);
 }
 if (!fs.existsSync(inPath)) {
@@ -58,7 +67,9 @@ if (!Array.isArray(htmlArray) || htmlArray.length === 0) {
     process.exit(1);
 }
 
-const midiBuffer = extractMidiFromHtml(htmlArray[0]);
+let midiBuffer = extractMidiFromHtml(htmlArray[0]);
+midiBuffer = injectTitleAndComposer(midiBuffer, { title, composer });
+
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, midiBuffer);
 console.error(`Wrote ${outPath} (${midiBuffer.length} bytes)`);
@@ -86,4 +97,4 @@ function percentDecodeToBuffer(str) {
         bytes.push(ch.charCodeAt(0) & 0xff);
     }
     return Buffer.from(bytes);
-}   
+}

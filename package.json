@@ -14,10 +14,10 @@
     "README.md"
   ],
   "scripts": {
-      "song": "node bin/cli.js song",
-      "plan": "node bin/cli.js plan",
-      "list": "node bin/cli.js list",
-      "install-soundfont": "powershell -ExecutionPolicy Bypass -File install-soundfont.ps1"
+    "song": "node bin/cli.js song",
+    "plan": "node bin/cli.js plan",
+    "list": "node bin/cli.js list",
+    "install-soundfont": "powershell -ExecutionPolicy Bypass -File install-soundfont.ps1"
   },
   "keywords": [
     "music",
@@ -45,7 +45,7 @@
     "dotenv": "^16.4.5",
     "execa": "^10.0.1",
     "js-yaml": "^4.1.0",
-    "openai": "^4.77.0",
-    "ora": "^9.4.1"
+    "jszip": "^3.10.2",
+    "openai": "^4.77.0"
   }
 }

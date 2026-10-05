@@ -94,6 +94,11 @@ songs/**/score.abc
 songs/**/score.mid
 songs/**/song.wav
 songs/**/.score.loud.mid
+songs/**/score.mscz
+songs/**/.musescore-*.json
+songs/**/convert.json
+songs/**/*.bak
+songs/**/score-meta.mid
 
 # Stray intermediates anywhere else
 *.loud.mid
@@ -102,6 +107,9 @@ score-*.png
 *-spectrum.png
 loudnorm.txt
 *.download
+
+# Stray root-level plan.json (from ad-hoc `resonate plan -o plan.json`)
+/plan.json
 
 # YuE2 debug dump (written on failed parse)
 yue2_debug_response.json
