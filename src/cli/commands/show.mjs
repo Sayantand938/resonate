@@ -1,11 +1,11 @@
-// src/cli/commands/show.js
+// src/cli/commands/show.mjs
 // `resonate show [song]` — detailed per-song status view.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
-import { readMeta, targetFolders } from '../helpers.js';
+import { readMeta, targetFolders } from '../helpers.mjs';
 
 export function registerShow(program) {
     program

@@ -1,12 +1,12 @@
-// src/cli/commands/recreate.js
+// src/cli/commands/recreate.mjs
 // `resonate recreate [song]` — re-issue the saved YuE2 request.
 
 import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
 import { runScore } from '../../song/stages.mjs';
-import { readMeta, targetFolders } from '../helpers.js';
-import { setExit } from '../summary.js';
+import { readMeta, targetFolders } from '../helpers.mjs';
+import { setExit } from '../summary.mjs';
 
 export function registerRecreate(program) {
     program

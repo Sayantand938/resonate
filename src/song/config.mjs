@@ -6,6 +6,49 @@ import { projectRoot } from '../util.mjs';
 
 let _cache = null;
 
+function isPlainObject(v) {
+    return v != null && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Recursively merge `override` onto `base`, returning a new object.
+ *
+ * Plain objects merge key by key; arrays and scalars replace wholesale.
+ * This is what makes `config.local.yaml` able to redefine the whole
+ * `render.vst3_routing` table rather than concatenating onto it.
+ */
+export function deepMerge(base, override) {
+    if (!isPlainObject(base)) return override;
+    if (!isPlainObject(override)) return override === undefined ? base : override;
+
+    const out = { ...base };
+    for (const [key, value] of Object.entries(override)) {
+        out[key] = isPlainObject(value) && isPlainObject(base[key])
+            ? deepMerge(base[key], value)
+            : value;
+    }
+    return out;
+}
+
+/**
+ * Read and merge `config.yaml` with an optional gitignored
+ * `config.local.yaml` sitting beside it.
+ *
+ * The local file holds machine-specific settings (absolute VST3 paths,
+ * a different render backend, a pinned humanize seed) that must not be
+ * committed. It is deep-merged over the tracked config, so it only needs
+ * to name the keys it actually overrides.
+ */
+function readMergedConfig(configPath) {
+    const data = yaml.load(fs.readFileSync(configPath, 'utf8')) ?? {};
+
+    const localPath = path.join(path.dirname(configPath), 'config.local.yaml');
+    if (!fs.existsSync(localPath)) return { data, localPath: null };
+
+    const local = yaml.load(fs.readFileSync(localPath, 'utf8')) ?? {};
+    return { data: deepMerge(data, local), localPath };
+}
+
 export function loadConfig(configPathOverride) {
     if (_cache && !configPathOverride) return _cache;
 
@@ -20,7 +63,7 @@ export function loadConfig(configPathOverride) {
         throw new Error(`Config file not found: ${configPath}`);
     }
 
-    const data = yaml.load(fs.readFileSync(configPath, 'utf8')) ?? {};
+    const data = readMergedConfig(configPath).data;
     const base = path.dirname(configPath);
 
     const apiKey = process.env.AI_API ?? null;
@@ -31,6 +74,7 @@ export function loadConfig(configPathOverride) {
     const pathsRaw = data.paths ?? {};
     const apiRaw = data.api ?? {};
     const humanRaw = renderRaw.humanize ?? data.humanize ?? {};
+    const loudRaw = renderRaw.loudness ?? {};
 
     const writerModel = lyricsRaw.writer_model ?? 'openai/gpt-5.6-luna';
     const plannerModel = lyricsRaw.planner_model ?? writerModel;
@@ -72,9 +116,18 @@ export function loadConfig(configPathOverride) {
             soundfont: renderRaw.soundfont ?? null,
             sampleRate: Number(renderRaw.sample_rate ?? 44100),
             gain: Number(renderRaw.gain ?? 1.0),
-            lufs: Number(renderRaw.lufs ?? -14),
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
+
+            // `render.lufs` is the pre-0.2 name for `loudness.target_lufs`;
+            // still honoured as a fallback so old configs keep working.
+            loudness: {
+                enabled: Boolean(loudRaw.enabled ?? true),
+                targetLufs: Number(
+                    loudRaw.target_lufs ?? renderRaw.lufs ?? -14
+                ),
+                truePeakDb: Number(loudRaw.true_peak_db ?? -1),
+            },
 
             backend: String(renderRaw.backend ?? 'fluidsynth').toLowerCase(),
 

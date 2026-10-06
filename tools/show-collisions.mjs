@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// scripts/show-collisions.mjs — find ticks where two or more tracks
+// tools/show-collisions.mjs — find ticks where two or more tracks
 // play the same pitch at the same time (a "doubled" note).
 //
-// Usage: node scripts/show-collisions.mjs <path-to.mid>
+// Usage: node tools/show-collisions.mjs <path-to.mid>
 
 import fs from 'node:fs';
 
 const path = process.argv[2];
 if (!path) {
-    console.error('Usage: node scripts/show-collisions.mjs <path-to.mid>');
+    console.error('Usage: node tools/show-collisions.mjs <path-to.mid>');
     process.exit(1);
 }
 

@@ -1,4 +1,4 @@
-// src/cli/commands/dev.js
+// src/cli/commands/dev.mjs
 // Hidden dev tools: `plan` and `write`.
 
 import fs from 'node:fs';

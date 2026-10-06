@@ -1,26 +1,21 @@
-// src/song/stages.mjs — one function per stage + the full pipeline.
+// src/song/stages.mjs — one function per stage.
+//
+// Each stage is a thin orchestration layer: it works out the file paths and
+// the effective config, then delegates to the engine modules under
+// src/abc/, src/midi/, and src/audio/. Nothing here spawns a subprocess —
+// the standalone CLIs in scripts/ are wrappers over these same modules.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execa } from 'execa';
-import { projectRoot } from '../util.mjs';
 import { Planner } from './lyrics/planner.mjs';
 import { SongWriter } from './lyrics/writer.mjs';
 import { SongScorer } from './score/generator.mjs';
 import { parseSongMarkdown } from './lyrics/parser.mjs';
-
-// Silent execa — output captured, thrown only on failure.
-async function run(cmd, args, { cwd } = {}) {
-    try {
-        await execa(cmd, args, { cwd, stdio: 'pipe' });
-    } catch (err) {
-        const out = (err.stdout || err.stderr || '').trim();
-        throw new Error(
-            `${cmd} failed (exit ${err.exitCode ?? '?'})` +
-            (out ? `\n${out.split('\n').slice(-8).join('\n')}` : '')
-        );
-    }
-}
+import { renderWithAbcjs } from '../abc/engine.mjs';
+import { humanizeMidiBuffer } from '../midi/humanize.mjs';
+import { normalizeMidiBuffer } from '../midi/normalize.mjs';
+import { renderMidiToWav } from '../audio/fluidsynth.mjs';
+import { renderMidiToWavVst } from '../audio/vst3.mjs';
 
 // =====================================================================
 // plan
@@ -83,25 +78,22 @@ export async function runMidi(config, songFolder, {
     if (composer == null) composer = config.render.composer ?? null;
 
     const vp = config.render.voicePrograms ?? {};
-    const programMap = {
+    const programsByChannel = {
         0: vp.melody ?? 0,
         1: vp.ins ?? 0,
         2: vp.accompaniment ?? 0,
         3: vp.accompaniment2 ?? vp.accompaniment ?? 0,
     };
-    const programsStr = Object.entries(programMap)
-        .map(([ch, prog]) => `${ch}:${prog}`)
-        .join(',');
 
-    const root = projectRoot();
-    const args = [path.join(root, 'scripts', 'abc-render.mjs'), abcPath, midiPath];
-    if (program != null) args.push('--program', String(program));
-    if (tempo != null) args.push('--tempo', String(tempo));
-    if (title != null) args.push('--title', String(title));
-    if (composer != null) args.push('--composer', String(composer));
-    args.push('--programs', programsStr);
-
-    await run('node', args);
+    await renderWithAbcjs({
+        abcPath,
+        outMidiPath: midiPath,
+        programsByChannel,
+        title,
+        composer,
+        tempo,
+        program,
+    });
 
     if (!fs.existsSync(midiPath)) {
         throw new Error(`MIDI render did not produce ${midiPath}`);
@@ -109,20 +101,18 @@ export async function runMidi(config, songFolder, {
 
     // Optional humanization: rewrite score.mid -> score.human.mid
     const h = config.render.humanize;
-    if (h && h.enabled) {
-        const hArgs = [
-            path.join(root, 'scripts', 'humanize-midi.mjs'),
-            midiPath,
-            humanMidiPath,
-            '--timing-ms', String(h.timingMs),
-            '--velocity', String(h.velocity),
-            '--roll-ms', String(h.rollMs),
-            '--roll-order', h.rollOrder,
-            '--min-vel', String(h.minVel),
-            '--max-vel', String(h.maxVel),
-            '--seed', String(h.seed),
-        ];
-        await run('node', hArgs);
+    const humanized = Boolean(h && h.enabled);
+    if (humanized) {
+        const result = humanizeMidiBuffer(fs.readFileSync(midiPath), {
+            timingMs: h.timingMs,
+            velocity: h.velocity,
+            rollMs: h.rollMs,
+            rollOrder: h.rollOrder,
+            minVel: h.minVel,
+            maxVel: h.maxVel,
+            seed: h.seed,
+        });
+        fs.writeFileSync(humanMidiPath, result.buffer);
 
         if (!fs.existsSync(humanMidiPath)) {
             throw new Error(`humanize-midi did not produce ${humanMidiPath}`);
@@ -135,7 +125,7 @@ export async function runMidi(config, songFolder, {
         abcPath,
         title,
         composer,
-        humanized: Boolean(h && h.enabled),
+        humanized,
     };
 }
 
@@ -146,11 +136,8 @@ export async function runMidi(config, songFolder, {
 export async function runRender(config, songFolder, {
     soundfont,
     gain,
-    lufs,
     keep,
 } = {}) {
-    const root = projectRoot();
-
     // Prefer the humanized MIDI if it exists and humanize is enabled.
     const h = config.render.humanize;
     const humanMidiPath = path.join(songFolder, 'score.human.mid');
@@ -169,6 +156,7 @@ export async function runRender(config, songFolder, {
 
     const backend = config.render.backend ?? 'fluidsynth';
     const g = gain ?? config.render.gain;
+    const loudness = config.render.loudness ?? {};
 
     if (backend === 'vst3') {
         const routing = config.render.vst3Routing ?? [];
@@ -181,26 +169,20 @@ export async function runRender(config, songFolder, {
             }
         }
 
-        const routesJson = JSON.stringify(
-            routing.map((r) => ({
+        await renderMidiToWavVst({
+            midiPath,
+            wavPath,
+            routes: routing.map((r) => ({
                 channels: r.channels,
                 vst3: r.vst3,
                 gain: r.gain ?? 1.0,
-            }))
-        );
-
-        const args = [
-            path.join(root, 'scripts', 'midi2wav-vst.mjs'),
-            midiPath,
-            wavPath,
-            '--routes', routesJson,
-            '--normalize',
-        ];
-        if (config.render.sampleRate) {
-            args.push('--sr', String(config.render.sampleRate));
-        }
-
-        await run('node', args);
+            })),
+            sampleRate: config.render.sampleRate,
+            normalize: true,
+            loudness,
+            // Stages run silently on success; the CLI wrappers report instead.
+            silent: true,
+        });
 
         if (!fs.existsSync(wavPath)) {
             throw new Error(`midi2wav-vst did not produce ${wavPath}`);
@@ -210,30 +192,25 @@ export async function runRender(config, songFolder, {
 
     // FluidSynth backend
     const normMidi = path.join(songFolder, '.score.loud.mid');
-    await run('node', [
-        path.join(root, 'scripts', 'normalize-midi.mjs'),
-        midiPath,
-        normMidi,
-    ]);
+    const normalized = normalizeMidiBuffer(fs.readFileSync(midiPath));
+    fs.writeFileSync(normMidi, normalized.buffer);
 
-    const args = [
-        path.join(root, 'scripts', 'midi2wav.mjs'),
-        normMidi,
-        wavPath,
-    ];
-    const sf = soundfont ?? config.render.soundfont;
-    const l = lufs ?? config.render.lufs;
-
-    if (sf) args.push('--sf', sf);
-    if (g != null) args.push('--gain', String(g));
-    if (l != null) args.push('--lufs', String(l));
-    if (keep) args.push('--keep');
-
-    await run('node', args);
-
-    if (!keep) {
-        try { fs.unlinkSync(normMidi); } catch { /* ignore */ }
+    try {
+        await renderMidiToWav({
+            midiPath: normMidi,
+            wavPath,
+            soundfont: (soundfont ?? config.render.soundfont) ?? undefined,
+            gain: g ?? undefined,
+            loudness,
+            keep,
+            silent: true,
+        });
+    } finally {
+        if (!keep) {
+            try { fs.unlinkSync(normMidi); } catch { /* ignore */ }
+        }
     }
+
     if (!fs.existsSync(wavPath)) {
         throw new Error(`midi2wav did not produce ${wavPath}`);
     }

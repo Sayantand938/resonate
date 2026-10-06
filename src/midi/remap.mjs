@@ -1,4 +1,4 @@
-// src/song/midi-remap.mjs
+// src/midi/remap.mjs
 // Rewrite channel numbers for every event in each track, so that
 // each voice has its own dedicated MIDI channel.
 //
@@ -7,6 +7,8 @@
 // onto its own channel so program_changes apply cleanly.
 //
 // No dependencies; operates on raw bytes.
+
+import { isMidi, headerLength, trackChunks, encodeTrackChunk } from './chunks.mjs';
 
 /**
  * @param {Buffer} midiBuffer
@@ -20,25 +22,10 @@ export function remapChannels(midiBuffer, trackToChannel = {}) {
     if (!trackToChannel || Object.keys(trackToChannel).length === 0) {
         return midiBuffer;
     }
-    if (midiBuffer.length < 14) return midiBuffer;
-    if (midiBuffer.toString('ascii', 0, 4) !== 'MThd') return midiBuffer;
+    if (!isMidi(midiBuffer)) return midiBuffer;
 
-    const headerLen = midiBuffer.readUInt32BE(4);
-    let pos = 8 + headerLen;
-
-    // Collect MTrk chunk offsets.
-    const tracks = [];
-    while (pos + 8 <= midiBuffer.length) {
-        if (midiBuffer.toString('ascii', pos, pos + 4) !== 'MTrk') break;
-        const len = midiBuffer.readUInt32BE(pos + 4);
-        tracks.push({
-            start: pos,
-            dataStart: pos + 8,
-            dataEnd: pos + 8 + len,
-        });
-        pos = pos + 8 + len;
-    }
-
+    const headerLen = headerLength(midiBuffer);
+    const tracks = trackChunks(midiBuffer);
     if (tracks.length === 0) return midiBuffer;
 
     // Rewrite one track: change every channel-voice event to use targetCh.
@@ -87,11 +74,7 @@ export function remapChannels(midiBuffer, trackToChannel = {}) {
             out.push(deltaBytes, rewritten);
         }
 
-        const data = Buffer.concat(out);
-        const hdr = Buffer.alloc(8);
-        hdr.write('MTrk', 0, 'ascii');
-        hdr.writeUInt32BE(data.length, 4);
-        return Buffer.concat([hdr, data]);
+        return encodeTrackChunk(Buffer.concat(out));
     }
 
     // Build output.

@@ -16,8 +16,8 @@
   Re-download even if the file already exists.
 
 .EXAMPLE
-  .\install-soundfont.ps1
-  .\install-soundfont.ps1 -Destination "D:\soundfonts" -Force
+  .\scripts\install-soundfont.ps1
+  .\scripts\install-soundfont.ps1 -Destination "D:\soundfonts" -Force
 #>
 
 [CmdletBinding()]

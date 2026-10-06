@@ -13,8 +13,14 @@ server on `http://127.0.0.1:8080` for the score stage.
 
 ```powershell
 pnpm install
-Copy-Item .env.example .env     # set AI_API=<your key>
-pnpm run install-soundfont      # one-time ~31 MB download
+Copy-Item .env.example .env             # set AI_API=<your key>
+pnpm run install-soundfont              # one-time ~31 MB download
+```
+
+Optional, for the VST3 render backend:
+
+```powershell
+Copy-Item config.local.yaml.example config.local.yaml   # then edit the paths
 ```
 
 ## Use
@@ -47,6 +53,45 @@ resume by running the same command again.
 
 ## Layout
 
+### Repository
+
+```
+bin/cli.mjs           CLI entry point
+config.yaml           portable defaults            (tracked)
+config.local.yaml     machine-specific overrides    (gitignored)
+
+src/
+  cli/                command registration, progress, result summaries
+    commands/         one module per `resonate` subcommand
+  song/               pipeline orchestration
+    lyrics/           planner, writer, parser, prompts/
+    score/            YuE2 client + ABC generator
+  abc/engine.mjs      ABC → MIDI via abcjs
+  midi/               byte-level MIDI transforms
+    chunks.mjs        MThd/MTrk structure helpers
+    varlen.mjs        variable-length quantities
+    meta.mjs          title/composer + program injection
+    remap.mjs         one channel per voice
+    humanize.mjs      timing + velocity jitter, chord roll
+    normalize.mjs     velocity range normalization
+  audio/              MIDI → WAV backends
+    fluidsynth.mjs    FluidSynth + ffmpeg (default)
+    vst3.mjs          VST3 instruments (Python + Pedalboard)
+    render_vst_multi.py
+
+scripts/              standalone CLIs for each stage, plus install-soundfont.ps1
+tools/                dev forensics — see tools/README.md
+```
+
+The layering rule: **`src/` holds the logic, `scripts/` holds argument parsing
+and file reporting, and `tools/` is imported by neither.** Each script under
+`scripts/` is a thin wrapper over a `src/` module, and the stage functions in
+[stages.mjs](src/song/stages.mjs) call those same modules directly — so every
+step has exactly one implementation, whether you drive it from `resonate` or
+from `node scripts/midi2wav.mjs`.
+
+### Song folder
+
 ```
 songs/<date>-<slug>/
 ├── plan.json    creative plan        (source)
@@ -55,6 +100,26 @@ songs/<date>-<slug>/
 ├── score.mid    MIDI                 (regenerable)
 └── song.wav     final audio          (regenerable)
 ```
+
+## Configuration
+
+`config.yaml` is tracked and contains portable defaults only.
+Machine-specific settings — absolute VST3 paths, the render backend, a pinned
+humanize seed — belong in `config.local.yaml`, which is gitignored and
+deep-merged over the tracked file:
+
+```yaml
+# config.local.yaml
+render:
+  backend: vst3
+  vst3_routing:
+    - channels: [0, 1]
+      vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+      gain: 0.9
+```
+
+Plain objects merge key by key; arrays and scalars replace wholesale, so
+redefining `vst3_routing` takes effect as a whole rather than appending.
 
 ## MIDI engine
 
@@ -78,3 +143,41 @@ the pipeline so it never collides with the melody voice.
 Voice programs are configured under `render.voice_programs` in
 `config.yaml`. Change them to taste; see the General MIDI spec for the
 full list of program numbers.
+
+### Humanization
+
+When `render.humanize.enabled` is true, `midi` writes a second file,
+`score.human.mid` — the abcjs output with timing jitter, velocity jitter,
+and chord roll applied — and `render` prefers it over `score.mid`. Set
+`humanize.seed` to a non-zero value for reproducible renders; `0` picks a
+fresh random seed each run.
+
+### Loudness
+
+Every render is normalized to a streaming target, set in `render.loudness`:
+
+```yaml
+render:
+  loudness:
+    enabled: true
+    target_lufs: -14    # Spotify / YouTube integrated target
+    true_peak_db: -1    # Spotify's maximum true peak
+```
+
+This is the one place in the project that decides output level, and both
+backends go through it — previously FluidSynth normalized to -14 LUFS while
+VST3 applied no normalization at all, so the same song could land ~11 dB
+apart depending on which backend rendered it.
+
+A quiet mix cannot reach the target for free. When the gain needed to hit
+`target_lufs` would push peaks past `true_peak_db`, `loudnorm` reduces gain
+instead of clipping, so dynamic material gets some transient limiting. Raise
+`target_lufs` toward `-18` for a more open master, or set `enabled: false`
+to keep the raw backend level and let the streaming service normalize.
+
+Spotify also caps how far it will lift a quiet track, to leave headroom for
+lossy encoding. As their docs put it: *"If a track loudness level is -20 dB
+LUFS, and its True Peak maximum is -5 dB FS, we only lift the track up to
+-16 dB LUFS."* A master that sits low with unused peak headroom therefore
+plays back quieter than its neighbours — it does not get rescued.
+

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# scripts/render_vst_multi.py — render MIDI to WAV through multiple VST3
+# src/audio/render_vst_multi.py — render MIDI to WAV through multiple VST3
 # instruments, one per channel group, mixed into a single stereo WAV.
 #
 # Usage:
-#   python scripts/render_vst_multi.py <in.mid> <out.wav> \
+#   python src/audio/render_vst_multi.py <in.mid> <out.wav> \
 #       --routes '[{"channels":[0,1],"vst3":"...","gain":1.0}, ...]' \
 #       [--sr 44100] [--normalize]
 

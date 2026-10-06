@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// scripts/inspect-humanization.mjs — report per-note timing and velocity
+// tools/inspect-humanization.mjs — report per-note timing and velocity
 // statistics for a MIDI file.
 //
-// Usage: node scripts/inspect-humanization.mjs <file.mid>
+// Usage: node tools/inspect-humanization.mjs <file.mid>
 
 import fs from 'node:fs';
 
 const path = process.argv[2];
 if (!path) {
-    console.error('Usage: node scripts/inspect-humanization.mjs <file.mid>');
+    console.error('Usage: node tools/inspect-humanization.mjs <file.mid>');
     process.exit(1);
 }
 

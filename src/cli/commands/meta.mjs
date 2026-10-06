@@ -1,11 +1,11 @@
-// src/cli/commands/meta.js
+// src/cli/commands/meta.mjs
 // `resonate meta [song]` — YuE2 generation info for one song or all songs.
 
 import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
-import { readMeta, targetFolders } from '../helpers.js';
-import { setExit } from '../summary.js';
+import { readMeta, targetFolders } from '../helpers.mjs';
+import { setExit } from '../summary.mjs';
 
 export function registerMeta(program) {
     program

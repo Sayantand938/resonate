@@ -1,4 +1,4 @@
-// src/cli/progress.js
+// src/cli/progress.mjs
 // Progress printer for stage commands.
 //
 // Streams events live to stderr as they happen, and collects them so a

@@ -1,19 +1,25 @@
-// scripts/abcjs-engine.mjs
-// Render an ABC file to MIDI using abcjs (in-process).
+// src/abc/engine.mjs
+// Render ABC notation to a MIDI file using abcjs, in-process.
+//
+// abcjs is imported lazily: it is a sizeable browser-oriented bundle, and
+// commands like `resonate list` should not pay to load it.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-    injectTitleAndComposer,
-    injectPrograms,
-} from '../src/song/midi-meta.mjs';
-import { remapChannels } from '../src/song/midi-remap.mjs';
+import { injectTitleAndComposer, injectPrograms } from '../midi/meta.mjs';
+import { remapChannels } from '../midi/remap.mjs';
 
-if (typeof globalThis.window === 'undefined') {
-    globalThis.window = globalThis;
+let _abcjs = null;
+
+async function loadAbcjs() {
+    if (_abcjs) return _abcjs;
+    // abcjs expects a browser-ish global; give it one before the import.
+    if (typeof globalThis.window === 'undefined') {
+        globalThis.window = globalThis;
+    }
+    _abcjs = (await import('abcjs')).default;
+    return _abcjs;
 }
-
-const abcjs = (await import('abcjs')).default;
 
 /**
  * @param {Object} opts
@@ -38,6 +44,8 @@ export async function renderWithAbcjs({
     if (!fs.existsSync(abcPath)) {
         throw new Error(`ABC file not found: ${abcPath}`);
     }
+
+    const abcjs = await loadAbcjs();
     if (typeof abcjs.synth?.getMidiFile !== 'function') {
         throw new Error('abcjs.synth.getMidiFile is not available.');
     }
@@ -86,6 +94,34 @@ export async function renderWithAbcjs({
 // Helpers --------------------------------------------------------------
 
 /**
+ * Parse a `--programs` CLI spec into a channel → GM program map.
+ *
+ * Accepts either explicit pairs or bare positions:
+ *   "0:24,1:0,2:0"   → { 0: 24, 1: 0, 2: 0 }
+ *   "24,0,0"         → { 0: 24, 1: 0, 2: 0 }
+ *
+ * @param {string} [str]
+ * @returns {Object<number, number>}
+ */
+export function parseProgramsSpec(str) {
+    const map = {};
+    if (!str) return map;
+
+    if (str.includes(':')) {
+        for (const pair of str.split(',')) {
+            const [ch, prog] = pair.split(':').map((s) => Number(s.trim()));
+            if (Number.isInteger(ch) && Number.isInteger(prog)) map[ch] = prog;
+        }
+    } else {
+        str.split(',').forEach((p, i) => {
+            const prog = Number(p.trim());
+            if (Number.isInteger(prog)) map[i] = prog;
+        });
+    }
+    return map;
+}
+
+/**
  * Build the { trackIndex → channel } map for the given ABC source and
  * the MIDI buffer abcjs produced from it.
  *
@@ -122,7 +158,7 @@ function deriveTrackToChannelMap(abcSource, midiBuffer) {
     const usableVoices = Math.min(voiceCount, maxChannels);
     if (voiceCount > maxChannels) {
         console.error(
-            `[warn] abcjs-engine: ${voiceCount} voices in ABC, but MIDI ` +
+            `[warn] abc-engine: ${voiceCount} voices in ABC, but MIDI ` +
             `has only ${maxChannels} channels. Voices beyond ${maxChannels} ` +
             `will share channels with earlier voices.`
         );
@@ -138,7 +174,7 @@ function deriveTrackToChannelMap(abcSource, midiBuffer) {
             map[accompTrackIdx] = accompChannel;
         } else {
             console.error(
-                `[warn] abcjs-engine: no free channel for accompaniment; ` +
+                `[warn] abc-engine: no free channel for accompaniment; ` +
                 `leaving it on its original channels (may collide).`
             );
         }

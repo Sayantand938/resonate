@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { loadConfig } from '../../song/config.mjs';
 import { stageAll } from '../../song/pipeline.mjs';
-import { runStageCommand } from '../helpers.js';
+import { runStageCommand } from '../helpers.mjs';
 
 export function registerAll(program) {
     program

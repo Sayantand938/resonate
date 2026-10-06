@@ -1,11 +1,11 @@
 // inspect-midi.mjs — deep inspection of a MIDI file.
-// Usage: node inspect-midi.mjs <path-to.mid>
+// Usage: node tools/inspect-midi.mjs <path-to.mid>
 
 import fs from 'node:fs';
 
 const path = process.argv[2];
 if (!path) {
-    console.error('Usage: node inspect-midi.mjs <path-to.mid>');
+    console.error('Usage: node tools/inspect-midi.mjs <path-to.mid>');
     process.exit(1);
 }
 

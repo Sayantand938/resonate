@@ -1,21 +1,22 @@
 {
   "name": "resonate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generate songs end-to-end: theme → lyrics → ABC → MIDI → production-ready WAV",
   "type": "module",
   "bin": {
-    "resonate": "./bin/cli.js"
+    "resonate": "./bin/cli.mjs"
   },
   "files": [
     "bin/",
     "scripts/",
     "src/",
     "config.yaml",
+    "config.local.yaml.example",
     "README.md"
   ],
   "scripts": {
-    "list": "node bin/cli.js list",
-    "install-soundfont": "powershell -ExecutionPolicy Bypass -File install-soundfont.ps1"
+    "list": "node bin/cli.mjs list",
+    "install-soundfont": "powershell -ExecutionPolicy Bypass -File scripts/install-soundfont.ps1"
   },
   "keywords": [
     "music",

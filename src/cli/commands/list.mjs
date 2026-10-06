@@ -1,4 +1,4 @@
-// src/cli/commands/list.js
+// src/cli/commands/list.mjs
 // `resonate list` — table view of every song and its pipeline status.
 
 import fs from 'node:fs';
@@ -7,7 +7,7 @@ import Table from 'cli-table3';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
 import { findSongFolders } from '../../song/paths.mjs';
-import { readMeta } from '../helpers.js';
+import { readMeta } from '../helpers.mjs';
 
 export function registerList(program) {
     program

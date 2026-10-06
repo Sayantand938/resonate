@@ -1,12 +1,12 @@
-// src/cli/helpers.js
+// src/cli/helpers.mjs
 // Shared helpers used across CLI commands.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
 import { resolveSongFolder, findSongFolders } from '../song/paths.mjs';
-import { makeProgress, printGroupedProgress } from './progress.js';
-import { printStageSummary } from './summary.js';
+import { makeProgress, printGroupedProgress } from './progress.mjs';
+import { printStageSummary } from './summary.mjs';
 
 /**
  * Read score.meta.json for a song folder. Returns null if missing or

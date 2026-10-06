@@ -1,4 +1,4 @@
-// src/cli/commands/lyrics.js
+// src/cli/commands/lyrics.mjs
 // `resonate lyrics` — create N new songs (plan.json + song.md).
 
 import path from 'node:path';
@@ -6,8 +6,8 @@ import Table from 'cli-table3';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
 import { stageLyrics } from '../../song/pipeline.mjs';
-import { makeProgress } from '../progress.js';
-import { setExit } from '../summary.js';
+import { makeProgress } from '../progress.mjs';
+import { setExit } from '../summary.mjs';
 
 export function registerLyrics(program) {
     program

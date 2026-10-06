@@ -34,22 +34,42 @@ render:
   soundfont: null
   sample_rate: 44100
   gain: 1.0
-  lufs: -14
   timeout_seconds: 300
   composer: Sayantan
 
-  # WAV render backend: "fluidsynth" (default) or "vst3".
-  backend: vst3
+  # Final loudness normalization, applied to the WAV whichever backend
+  # produced it. These are the Spotify delivery targets:
+  #
+  #   target_lufs   integrated loudness (-14 LUFS is Spotify/YouTube)
+  #   true_peak_db  true-peak ceiling, so lossy transcoding can't clip
+  #
+  # Reaching the target from a very dynamic mix needs some gain reduction,
+  # because loudnorm limits rather than clips. Raise target_lufs towards
+  # -10 for a louder, more squashed master; set enabled:false to keep the
+  # raw backend level and let the streaming service do all the work.
+  loudness:
+    enabled: true
+    target_lufs: -14
+    true_peak_db: -1
 
-  # VST3 routing table. Each entry maps a set of MIDI channels to a VST3
-  # instrument. Channels not listed are dropped from the render.
-  vst3_routing:
-    - channels: [0, 1]
-      vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
-      gain: 0.9
-    - channels: [2]
-      vst3: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
-      gain: 3.0
+  # WAV render backend: "fluidsynth" (default) or "vst3".
+  #
+  # This tracked file holds portable defaults only. Machine-specific
+  # settings — absolute VST3 paths, a different backend, a pinned humanize
+  # seed — belong in the gitignored `config.local.yaml`, which is
+  # deep-merged over this file. See `config.local.yaml.example`.
+  backend: fluidsynth
+
+  # VST3 routing table (only consulted when backend: vst3). Each entry maps
+  # a set of MIDI channels to a VST3 instrument; channels not listed are
+  # dropped from the render. Configure it in config.local.yaml, e.g.
+  #
+  #   render:
+  #     vst3_routing:
+  #       - channels: [0, 1]
+  #         vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+  #         gain: 0.9
+  vst3_routing: []
 
   # Humanize: subtle timing jitter, velocity jitter, and chord roll added
   # to the rendered MIDI before it goes to the audio backend.

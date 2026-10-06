@@ -1,4 +1,4 @@
-// src/song/midi-meta.mjs
+// src/midi/meta.mjs
 // Two independent byte-level operations on a standard MIDI file:
 //
 //   1. injectTitleAndComposer() — writes track_name + copyright meta into track 0
@@ -7,13 +7,21 @@
 //
 // Both walk the raw MIDI bytes; no dependencies.
 
+import {
+    isMidi,
+    firstTrackOffset,
+    headerLength,
+    trackChunks,
+    encodeTrackChunk,
+} from './chunks.mjs';
+import { encodeVarLen } from './varlen.mjs';
+
 export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
     if (!title && !composer) return midiBuffer;
-    if (midiBuffer.length < 14) return midiBuffer;
-    if (midiBuffer.toString('ascii', 0, 4) !== 'MThd') return midiBuffer;
+    if (!isMidi(midiBuffer)) return midiBuffer;
 
-    const headerLen = midiBuffer.readUInt32BE(4);
-    const pos = 8 + headerLen;
+    const headerLen = headerLength(midiBuffer);
+    const pos = firstTrackOffset(midiBuffer);
     if (midiBuffer.toString('ascii', pos, pos + 4) !== 'MTrk') return midiBuffer;
 
     const trackLen = midiBuffer.readUInt32BE(pos + 4);
@@ -70,14 +78,10 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
     if (!hasEot) newEvents.push(Buffer.from([0x00, 0xFF, 0x2F, 0x00]));
 
     const data = Buffer.concat(newEvents);
-    const hdr = Buffer.alloc(8);
-    hdr.write('MTrk', 0, 'ascii');
-    hdr.writeUInt32BE(data.length, 4);
 
     return Buffer.concat([
         midiBuffer.subarray(0, pos),
-        hdr,
-        data,
+        encodeTrackChunk(data),
         midiBuffer.subarray(trackEnd),
     ]);
 }
@@ -102,24 +106,10 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
     if (!programsByChannel || Object.keys(programsByChannel).length === 0) {
         return midiBuffer;
     }
-    if (midiBuffer.length < 14) return midiBuffer;
-    if (midiBuffer.toString('ascii', 0, 4) !== 'MThd') return midiBuffer;
+    if (!isMidi(midiBuffer)) return midiBuffer;
 
-    const headerLen = midiBuffer.readUInt32BE(4);
-    let pos = 8 + headerLen;
-
-    const tracks = [];
-    while (pos + 8 <= midiBuffer.length) {
-        if (midiBuffer.toString('ascii', pos, pos + 4) !== 'MTrk') break;
-        const len = midiBuffer.readUInt32BE(pos + 4);
-        tracks.push({
-            start: pos,
-            dataStart: pos + 8,
-            dataEnd: pos + 8 + len,
-        });
-        pos = pos + 8 + len;
-    }
-
+    const headerLen = headerLength(midiBuffer);
+    const tracks = trackChunks(midiBuffer);
     if (tracks.length === 0) return midiBuffer;
 
     // Collect every distinct channel used by channel-voice events in
@@ -162,10 +152,7 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
         }
         const data = midiBuffer.subarray(t.dataStart, t.dataEnd);
         const newData = Buffer.concat([...headerBytes, data]);
-        const hdr = Buffer.alloc(8);
-        hdr.write('MTrk', 0, 'ascii');
-        hdr.writeUInt32BE(newData.length, 4);
-        return Buffer.concat([hdr, newData]);
+        return encodeTrackChunk(newData);
     }
 
     const out = [midiBuffer.subarray(0, 8 + headerLen)];
@@ -190,17 +177,4 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
         out.push(rewriteTrack(t, programEntries));
     }
     return Buffer.concat(out);
-}
-
-// ---------------------------------------------------------------------
-
-function encodeVarLen(n) {
-    if (n < 0) n = 0;
-    const out = [n & 0x7f];
-    n >>= 7;
-    while (n > 0) {
-        out.unshift((n & 0x7f) | 0x80);
-        n >>= 7;
-    }
-    return Buffer.from(out);
 }

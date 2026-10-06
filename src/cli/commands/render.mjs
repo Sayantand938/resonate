@@ -1,6 +1,6 @@
 import { loadConfig } from '../../song/config.mjs';
 import { stageRender } from '../../song/pipeline.mjs';
-import { runStageCommand } from '../helpers.js';
+import { runStageCommand } from '../helpers.mjs';
 
 export function registerRender(program) {
     program

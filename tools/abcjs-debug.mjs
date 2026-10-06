@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// scripts/abcjs-debug.mjs — render an ABC file to MIDI with abcjs, with
+// tools/abcjs-debug.mjs — render an ABC file to MIDI with abcjs, with
 // full debug output at every step.
 //
 // Usage:
-//   node scripts/abcjs-debug.mjs <in.abc> <out.mid>
+//   node tools/abcjs-debug.mjs <in.abc> <out.mid>
 //
 // Does NOT touch the pipeline. Standalone. Prints verbose diagnostics:
 //   - source file info (bytes, lines, first 40 lines dumped)
@@ -24,7 +24,7 @@ if (typeof globalThis.window === 'undefined') {
 
 const [, , inPath, outPath] = process.argv;
 if (!inPath || !outPath) {
-    console.error('Usage: node scripts/abcjs-debug.mjs <in.abc> <out.mid>');
+    console.error('Usage: node tools/abcjs-debug.mjs <in.abc> <out.mid>');
     process.exit(1);
 }
 if (!fs.existsSync(inPath)) {

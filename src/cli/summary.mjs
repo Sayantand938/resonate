@@ -1,4 +1,4 @@
-// src/cli/summary.js
+// src/cli/summary.mjs
 // Per-stage result summaries and process exit code handling.
 
 import path from 'node:path';
