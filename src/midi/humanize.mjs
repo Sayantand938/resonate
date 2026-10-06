@@ -8,7 +8,7 @@
 
 import { isMidi, headerLength, encodeTrackChunk } from './chunks.mjs';
 import { encodeVarLen } from './varlen.mjs';
-import { parseMidiEvents } from './events.mjs';
+import { parseMidiEvents, firstTempo } from './events.mjs';
 
 /**
  * Deterministic PRNG (mulberry32) when seeded, `Math.random` when not.
@@ -54,10 +54,6 @@ export function humanizeMidiBuffer(inputBuffer, {
     const buf = Buffer.from(inputBuffer);
     const headerLen = headerLength(buf);
     const division = buf.readUInt16BE(12);
-    const msToTicks = (ms) => Math.round((ms / 500) * division);
-
-    const maxTimingTicks = msToTicks(timingMs);
-    const rollTicks = msToTicks(rollMs);
 
     const rng = makeRng(seed);
 
@@ -65,6 +61,19 @@ export function humanizeMidiBuffer(inputBuffer, {
     // file: the RNG is consumed in track/event order, so the parse order is
     // part of the output contract.
     const { tracks: parsed } = parseMidiEvents(buf);
+
+    // Convert the millisecond settings using the file's actual tempo. The
+    // first version of this hardcoded 500 ms/beat (120 BPM), so at 70 BPM a
+    // "15 ms" jitter was really 25 ms -- 71% stronger than configured, and
+    // worse the slower the song.
+    const { usPerQuarter } = firstTempo(parsed);
+    const msPerTick = (usPerQuarter / 1000) / division;
+    const msToTicks = (ms) => Math.round(ms / msPerTick);
+
+    const maxTimingTicks = msToTicks(timingMs);
+    const rollTicks = msToTicks(rollMs);
+    // One walk step of max/3 reaches the bound in roughly ten notes.
+    const driftStepTicks = maxTimingTicks / 3;
 
     for (let ti = 0; ti < parsed.length; ti++) {
         if (ti === 0) continue;
@@ -101,9 +110,19 @@ export function humanizeMidiBuffer(inputBuffer, {
             for (let i = 0; i < group.length; i++) group[i].rollOffsetTicks = i * rollTicks;
         }
 
+        // Timing drifts as a bounded random walk rather than independent
+        // per-note noise. A player pushes and pulls a phrase as a unit;
+        // uncorrelated jitter on every note is what makes a part read as an
+        // unsteady beginner. Reset per track so the parts still start
+        // together.
+        let drift = 0;
         for (const ev of events) {
             if (ev.kind !== 'noteOn') continue;
-            const jitter = maxTimingTicks > 0 ? Math.round((rng() * 2 - 1) * maxTimingTicks) : 0;
+            if (maxTimingTicks > 0) {
+                drift += (rng() * 2 - 1) * driftStepTicks;
+                drift = Math.max(-maxTimingTicks, Math.min(maxTimingTicks, drift));
+            }
+            const jitter = Math.round(drift);
             const roll = ev.rollOffsetTicks ?? 0;
             ev.newTimingOffset = jitter + roll;
             if (velocity > 0) {

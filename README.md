@@ -196,10 +196,35 @@ full list of program numbers.
 ### Humanization
 
 When `render.humanize.enabled` is true, `midi` writes a second file,
-`score.human.mid` — the abcjs output with timing jitter, velocity jitter,
-and chord roll applied — and `render` prefers it over `score.mid`. Set
+`score.human.mid` — the abcjs output with timing drift, velocity variation
+and chord roll applied — and `render` prefers it over `score.mid`.
+
+The defaults are deliberately small, because the point is a touch of life
+rather than an audible performance:
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `timing_ms` | 4 | how far the timing drift wanders either way |
+| `velocity` | 4 | max velocity variation per note |
+| `chord_roll_ms` | 4 | stagger between notes of a same-tick chord |
+| `roll_order` | `up` | `up` strums low→high, `down` the reverse |
+
+Two details worth knowing:
+
+* **Timing drifts, it does not jitter.** The part is moved by a bounded
+  random walk, so it pushes and pulls as a phrase. Independent random jitter
+  on every note is what makes a part sound like an unsteady beginner.
+* **Milliseconds are tempo-aware.** They are converted using the song's own
+  tempo, so `4` means 4 ms at 70 BPM and at 140 BPM alike. Earlier versions
+  assumed 120 BPM, which made a "15 ms" setting deliver 25 ms on a slow song.
+
+Note durations are never changed — only when notes start. Set
 `humanize.seed` to a non-zero value for reproducible renders; `0` picks a
 fresh random seed each run.
+
+⚠️ Changing these settings does **not** rewrite `score.human.mid`; that file
+is written by the `midi` stage. Re-run `resonate midi --force` afterwards,
+or `render` will keep using the old file.
 
 ### Loudness
 

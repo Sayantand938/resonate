@@ -93,24 +93,30 @@ render:
   #         gain: 0.9
   vst3_routing: []
 
-  # Humanize: subtle timing jitter, velocity jitter, and chord roll added
+  # Humanize: subtle timing drift, velocity variation, and chord roll added
   # to the rendered MIDI before it goes to the audio backend.
   #
   # When enabled, runMidi writes score.human.mid (leaving score.mid as the
   # clean abcjs output), and runRender prefers the humanized file. Toggle
   # enabled:false to A/B against the mechanical version.
   #
-  #   timing_ms       max timing jitter per note, ± ms         (5-30)
-  #   velocity        max velocity jitter per note, ±          (4-15)
-  #   chord_roll_ms   stagger between same-tick chord notes, ms (5-25)
-  #   roll_order      "up" (low→high) or "down" (high→low)
-  #   min_vel/max_vel velocity clamp range for the humanized notes
+  # These are deliberately small. Timing moves as a bounded random walk --
+  # the part pushes and pulls as a phrase -- instead of independent jitter on
+  # every note, which is what reads as an unsteady beginner. Millisecond
+  # values are converted with the song's own tempo, so 4 ms means 4 ms at
+  # 70 BPM and at 140 BPM alike.
+  #
+  #   timing_ms       how far the drift wanders either way, ms     (0-15)
+  #   velocity        max velocity variation per note, ±           (0-10)
+  #   chord_roll_ms   stagger between same-tick chord notes, ms    (0-10)
+  #   roll_order      "up" (low→high, a strum) or "down" (high→low)
+  #   min_vel/max_vel velocity clamp for the humanized notes
   #   seed            0 = random each run; non-zero = deterministic
   humanize:
-    enabled: false
-    timing_ms: 15
-    velocity: 8
-    chord_roll_ms: 12
+    enabled: true
+    timing_ms: 4
+    velocity: 4
+    chord_roll_ms: 4
     roll_order: up
     min_vel: 40
     max_vel: 115
