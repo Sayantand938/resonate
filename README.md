@@ -218,8 +218,18 @@ Two details worth knowing:
   tempo, so `4` means 4 ms at 70 BPM and at 140 BPM alike. Earlier versions
   assumed 120 BPM, which made a "15 ms" setting deliver 25 ms on a slow song.
 
-Note durations are never changed — only when notes start. Set
-`humanize.seed` to a non-zero value for reproducible renders; `0` picks a
+A third detail matters more than it sounds:
+
+* **A note never runs into the next one of the same pitch.** The clean abcjs
+  output is exactly legato, so drift would otherwise manufacture overlaps —
+  and a sampled guitar cannot sound one pitch twice on one string, so it
+  chokes the earlier note and you hear it as muted. Releases are clamped to
+  the next same-pitch onset, preserving the original gap, so detached notes
+  and the accompaniment's deliberately overlapping chords keep their
+  articulation. Only notes that would have been choked are touched, by a
+  tick or two.
+
+Set `humanize.seed` to a non-zero value for reproducible renders; `0` picks a
 fresh random seed each run.
 
 ⚠️ Changing these settings does **not** rewrite `score.human.mid`; that file
