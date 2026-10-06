@@ -133,6 +133,31 @@ export function humanizeMidiBuffer(inputBuffer, {
             }
             if (ev.matchedOff) ev.matchedOff.newTimingOffset = ev.newTimingOffset;
         }
+
+        // Never let the drift push a release past the next onset of the same
+        // pitch. The clean abcjs output is exactly legato on the melodic
+        // channels -- every note ends the instant the next begins -- so any
+        // positive drift difference manufactures an overlap, and a sampled
+        // guitar cannot sound the same pitch twice on one string: it chokes
+        // the earlier note, which is heard as that note being muted.
+        //
+        // The original gap is preserved rather than forced to zero, so notes
+        // that were deliberately detached or deliberately overlapping (the
+        // generated accompaniment) keep their articulation.
+        const previousFor = new Map();
+        for (const ev of events) {
+            if (ev.kind !== 'noteOn' || !ev.matchedOff) continue;
+            const key = `${ev.channel}:${ev.note}`;
+            const previous = previousFor.get(key);
+            if (previous) {
+                const originalGap = ev.absTick - previous.matchedOff.absTick;
+                const limit = ev.newTimingOffset + originalGap;
+                if (previous.matchedOff.newTimingOffset > limit) {
+                    previous.matchedOff.newTimingOffset = limit;
+                }
+            }
+            previousFor.set(key, ev);
+        }
     }
 
     function encodeTrack(events) {
