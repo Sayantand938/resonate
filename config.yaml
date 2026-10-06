@@ -107,7 +107,7 @@ render:
   #   min_vel/max_vel velocity clamp range for the humanized notes
   #   seed            0 = random each run; non-zero = deterministic
   humanize:
-    enabled: true
+    enabled: false
     timing_ms: 15
     velocity: 8
     chord_roll_ms: 12

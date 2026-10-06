@@ -3,9 +3,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import chalk from 'chalk';
 import { resolveSongFolder, findSongFolders } from '../song/paths.mjs';
-import { makeProgress, printGroupedProgress } from './progress.mjs';
+import { makeProgress } from './progress.mjs';
 import { printStageSummary } from './summary.mjs';
 
 /**
@@ -33,13 +32,27 @@ export function targetFolders(config, songFolderArg) {
     return findSongFolders(config.paths.songsDir);
 }
 
+const nameOf = (folder) => path.basename(folder);
+
+// Wide enough for the longest song folder in a batch, so the stage column
+// lines up. Capped so one absurd folder name cannot push every line across
+// the terminal.
+const ID_WIDTH_CAP = 42;
+
+function idWidthFor(folders) {
+    let max = 0;
+    for (const f of folders) max = Math.max(max, nameOf(f).length);
+    return Math.min(max, ID_WIDTH_CAP);
+}
+
 /**
- * Run a stage command (score, midi, render, all) in single or batch
- * mode. Handles progress printing, grouped summary, and exit code.
+ * Run a stage command (score, transcribe, midi, render, video, all) in
+ * single or batch mode. Handles progress printing, the end-of-run summary,
+ * and the exit code.
  *
  * @param {Object} opts
- * @param {string} opts.stageName       'score' | 'midi' | 'render' | 'all'
- * @param {Function} opts.stageFn       stageScore | stageMidi | stageRender | stageAll
+ * @param {string} opts.stageName       'score' | 'transcribe' | 'midi' | ...
+ * @param {Function} opts.stageFn       stageScore | stageMidi | stageRender | ...
  * @param {string} opts.description     printed at the top of batch runs
  * @param {string} [opts.songFolderArg] optional positional from commander
  * @param {Object} opts.cmdOpts         the commander options object
@@ -54,30 +67,41 @@ export async function runStageCommand({
     config,
 }) {
     const single = Boolean(songFolderArg);
+    const folders = targetFolders(config, songFolderArg);
 
-    if (single) {
-        const folder = resolveSongFolder(config, songFolderArg);
-        const results = await stageFn(config, {
-            folder,
-            force: Boolean(cmdOpts.force),
-        });
-        const code = printStageSummary(results, { stage: stageName, single: true });
-        if (code) process.exitCode = code;
-        return;
-    }
-
-    console.log('');
-    console.log(description);
-    if (cmdOpts.force) console.log('  mode: force');
-    console.log('');
-
-    const progress = makeProgress();
-    const results = await stageFn(config, {
-        force: Boolean(cmdOpts.force),
-        onProgress: progress.onProgress,
+    // A single-song run produces one line, so a skip is worth printing. A
+    // batch run does not -- see the note in progress.mjs.
+    const progress = makeProgress({
+        showSkips: single,
+        idWidth: idWidthFor(folders),
     });
 
-    printGroupedProgress(progress.getEvents());
-    const code = printStageSummary(results, { stage: stageName });
-    if (code) process.exitCode = code;
+    try {
+        if (single) {
+            const results = await stageFn(config, {
+                folder: folders[0],
+                force: Boolean(cmdOpts.force),
+                onProgress: progress.onProgress,
+            });
+            const code = printStageSummary(results, { stage: stageName, single: true });
+            if (code) process.exitCode = code;
+            return;
+        }
+
+        console.log('');
+        console.log(description);
+        if (cmdOpts.force) console.log('  mode: force');
+        console.log('');
+
+        const results = await stageFn(config, {
+            force: Boolean(cmdOpts.force),
+            onProgress: progress.onProgress,
+        });
+
+        const code = printStageSummary(results, { stage: stageName });
+        if (code) process.exitCode = code;
+    } finally {
+        // A ticker must not outlive its stage.
+        progress.stop();
+    }
 }

@@ -1,8 +1,21 @@
 // src/cli/progress.mjs
-// Progress printer for stage commands.
+// Live progress for stage commands.
 //
-// Streams events live to stderr as they happen, and collects them so a
-// grouped summary can be printed at the end of a batch run.
+// Streams events to stderr as they happen, so a stage that takes minutes
+// never looks hung, and collects nothing the caller cannot already get from
+// the stage results.
+//
+// Two deliberate choices:
+//
+//   * Skips are silent unless asked for. They are instant, so streaming them
+//     adds no sense of progress -- and a no-op run across a whole library
+//     would otherwise scroll dozens of lines saying nothing happened. The
+//     end-of-run summary counts them by reason instead.
+//
+//   * Long operations tick. When stderr is a terminal, the in-progress line
+//     is rewritten every second with elapsed time, so "is it stuck?" has an
+//     answer. When output is redirected the line stays a single append, so
+//     logs and pipes get no carriage-return noise.
 
 import path from 'node:path';
 import chalk from 'chalk';
@@ -10,105 +23,110 @@ import chalk from 'chalk';
 const OK_TAG = '[OK]';
 const FAIL_TAG = '[!!]';
 const SKIP_TAG = '[--]';
-const STAGE_WIDTH = 6;
 
-export function makeProgress() {
-    const collected = [];
+// Widest stage name is "transcribe" (10). Hardcoded, but this is the one
+// place it lives; if a longer stage appears the column just goes ragged
+// rather than the output breaking.
+const STAGE_WIDTH = 10;
+
+const TICK_MS = 1000;
+
+/** Compact duration: "840ms", "14.2s", "2m52s", "1h04m". */
+export function formatDuration(ms) {
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    const totalSeconds = Math.round(ms / 1000);
+    if (totalSeconds < 60) return `${(ms / 1000).toFixed(1)}s`;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes < 60) return `${minutes}m${String(seconds).padStart(2, '0')}s`;
+    return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}m`;
+}
+
+/**
+ * @param {Object} [opts]
+ * @param {boolean} [opts.showSkips=false] print a line per skip (single-song runs)
+ * @param {number} [opts.idWidth=0] pad song names to this width so the stage
+ *   column lines up; 0 leaves them ragged. Batch runs know the folder set
+ *   up front, so they can pass the longest name.
+ */
+export function makeProgress({ showSkips = false, idWidth = 0 } = {}) {
+    const startedAt = new Map();
+    let ticker = null;
+    let linePrefix = '';
+
+    const stopTicker = () => {
+        if (ticker) {
+            clearInterval(ticker);
+            ticker = null;
+        }
+    };
+
+    const tty = Boolean(process.stderr.isTTY);
+
+    /** Finish the line a `start` opened. */
+    const finishLine = (id, tag, text) => {
+        if (tty) {
+            // The ticker may have overwritten the line, so rewrite it whole
+            // and pad in case the ticker text was longer.
+            process.stderr.write(`\r  ${id}  ${chalk.dim(tag)}  ${text}        \n`);
+        } else {
+            process.stderr.write(`${text}\n`);
+        }
+    };
 
     const onProgress = ({ phase, stage, label, folder, result }) => {
-        collected.push({ phase, stage, label, folder, result });
-
-        const id = label || (folder ? path.basename(folder) : '?');
-        const tag = stage
-            ? chalk.dim(stage.padEnd(STAGE_WIDTH))
-            : ''.padEnd(STAGE_WIDTH);
+        const rawId = label || (folder ? path.basename(folder) : '?');
+        const id = idWidth > 0 ? rawId.padEnd(idWidth) : rawId;
+        const tag = (stage ?? '').padEnd(STAGE_WIDTH);
+        const key = `${stage ?? ''}:${folder ?? label ?? '?'}`;
 
         if (phase === 'start') {
-            // The prefix is printed here, once, at the start of the line.
-            process.stderr.write(`${id}  ${tag}  ... `);
+            stopTicker(); // defensive: never let two tickers share a line
+            startedAt.set(key, Date.now());
+            linePrefix = `  ${id}  ${chalk.dim(tag)}  `;
+            process.stderr.write(`${linePrefix}... `);
+
+            if (tty) {
+                ticker = setInterval(() => {
+                    const elapsed = formatDuration(Date.now() - startedAt.get(key));
+                    process.stderr.write(`\r${linePrefix}${chalk.dim(elapsed)}`);
+                }, TICK_MS);
+            }
             return;
         }
 
-        // For all other phases, only the tail is written — the prefix
-        // is already on the current line from the start event.
+        if (phase === 'skip') {
+            // No `start` preceded this, so it needs its own prefix.
+            if (showSkips) {
+                process.stderr.write(
+                    `  ${id}  ${chalk.dim(tag)}  ${chalk.dim(SKIP_TAG)} `
+                    + `${result?.reason ?? 'skipped'}\n`
+                );
+            }
+            return;
+        }
+
         if (phase === 'done') {
+            stopTicker();
+            const ms = Date.now() - (startedAt.get(key) ?? Date.now());
             const parts = [];
             if (result?.title) parts.push(result.title);
             if (result?.seed != null) parts.push(`seed=${result.seed}`);
             const extra = parts.length ? `  ${parts.join('  ')}` : '';
-            process.stderr.write(`${chalk.green(OK_TAG)}${extra}\n`);
-        } else if (phase === 'skip') {
-            const reason = result?.reason ?? 'skipped';
-            // A warned skip is actionable (e.g. no thumbnail to build a video
-            // from), so it is coloured rather than dimmed like a routine one.
-            if (result?.warn) {
-                process.stderr.write(`${chalk.yellow(SKIP_TAG)} ${chalk.yellow(`(${reason})`)}\n`);
-            } else {
-                process.stderr.write(`${chalk.dim(SKIP_TAG)} (${reason})\n`);
-            }
-        } else if (phase === 'fail') {
-            const firstLine = result?.error
-                ? result.error.split('\n')[0]
-                : 'failed';
-            process.stderr.write(`${chalk.red(FAIL_TAG)}  ${firstLine}\n`);
+            finishLine(id, tag, `${chalk.green(OK_TAG)}  ${formatDuration(ms)}${extra}`);
+            return;
+        }
+
+        if (phase === 'fail') {
+            stopTicker();
+            const firstLine = (result?.error ?? 'failed').split('\n')[0];
+            finishLine(id, tag, `${chalk.red(FAIL_TAG)}  ${firstLine}`);
         }
     };
 
     return {
         onProgress,
-        getEvents: () => collected,
+        /** Call once when the stage finishes, so a ticker cannot outlive it. */
+        stop: stopTicker,
     };
-}
-
-/**
- * Print a grouped summary of collected events: one header per song,
- * stages indented underneath. Only used for batch runs.
- */
-export function printGroupedProgress(events) {
-    if (events.length === 0) return;
-
-    const groups = new Map();
-    for (const e of events) {
-        const key = e.folder
-            ? path.basename(e.folder)
-            : (e.label ?? '(unknown)');
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(e);
-    }
-
-    console.log('');
-    console.log(chalk.dim('Grouped summary'));
-    console.log('');
-
-    for (const [songName, songEvents] of groups.entries()) {
-        console.log(chalk.bold(songName));
-        for (const e of songEvents) {
-            const tag = e.stage
-                ? chalk.dim(e.stage.padEnd(STAGE_WIDTH))
-                : ''.padEnd(STAGE_WIDTH);
-            const indent = '  ';
-
-            if (e.phase === 'done') {
-                const parts = [];
-                if (e.result?.title) parts.push(e.result.title);
-                if (e.result?.seed != null) parts.push(`seed=${e.result.seed}`);
-                const extra = parts.length ? `  ${parts.join('  ')}` : '';
-                console.log(`${indent}${tag}  ${chalk.green(OK_TAG)}${extra}`);
-            } else if (e.phase === 'skip') {
-                const reason = e.result?.reason ?? 'skipped';
-                if (e.result?.warn) {
-                    console.log(`${indent}${tag}  ${chalk.yellow(SKIP_TAG)} ${chalk.yellow(`(${reason})`)}`);
-                } else {
-                    console.log(`${indent}${tag}  ${chalk.dim(SKIP_TAG)} (${reason})`);
-                }
-            } else if (e.phase === 'fail') {
-                const firstLine = e.result?.error
-                    ? e.result.error.split('\n')[0]
-                    : 'failed';
-                console.log(`${indent}${tag}  ${chalk.red(FAIL_TAG)}  ${firstLine}`);
-            }
-            // 'start' events are skipped: they'd duplicate the done/skip/fail line.
-        }
-        console.log('');
-    }
 }
