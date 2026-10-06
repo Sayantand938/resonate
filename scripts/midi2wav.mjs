@@ -3,7 +3,8 @@
 // FluidSynth → ffmpeg silence-trim → loudness normalization.
 //
 // Thin CLI wrapper: argument parsing and progress reporting only. The render
-// lives in src/audio/fluidsynth.mjs.
+// lives in src/audio/fluidsynth.mjs and is a pure renderer, so this wrapper
+// applies the loudness target itself.
 //
 // Usage:
 //   node scripts/midi2wav.mjs <in.mid> <out.wav>
@@ -14,6 +15,7 @@ import { renderMidiToWav } from '../src/audio/fluidsynth.mjs';
 import {
     DEFAULT_TARGET_LUFS,
     DEFAULT_TRUE_PEAK_DB,
+    applyLoudnessTarget,
 } from '../src/audio/loudness.mjs';
 import { parseArgs, die, requireInOut } from '../src/cli/args.mjs';
 
@@ -33,6 +35,13 @@ const args = parseArgs(process.argv.slice(2), {
 
 const { inPath, outPath } = requireInOut(args.positional, USAGE);
 
+const onStep = (msg) => console.error(msg);
+const loudness = {
+    enabled: !(args.noNormalize ?? false),
+    targetLufs: args.lufs ?? DEFAULT_TARGET_LUFS,
+    truePeakDb: args.truePeak ?? DEFAULT_TRUE_PEAK_DB,
+};
+
 let result;
 try {
     result = await renderMidiToWav({
@@ -42,13 +51,9 @@ try {
         gain: args.gain ?? 1.0,
         sampleRate: args.sr ?? 44100,
         keep: args.keep ?? false,
-        loudness: {
-            enabled: !(args.noNormalize ?? false),
-            targetLufs: args.lufs ?? DEFAULT_TARGET_LUFS,
-            truePeakDb: args.truePeak ?? DEFAULT_TRUE_PEAK_DB,
-        },
-        onStep: (n, total, msg) => console.error(`[${n}/${total}] ${msg}`),
+        onStep,
     });
+    await applyLoudnessTarget(result.wavPath, loudness, { onStep });
 } catch (err) {
     die(err.message);
 }

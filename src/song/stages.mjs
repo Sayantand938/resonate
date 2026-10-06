@@ -13,9 +13,7 @@ import { SongScorer } from './score/generator.mjs';
 import { parseSongMarkdown } from './lyrics/parser.mjs';
 import { renderWithAbcjs } from '../abc/engine.mjs';
 import { humanizeMidiBuffer } from '../midi/humanize.mjs';
-import { normalizeMidiBuffer } from '../midi/normalize.mjs';
-import { renderMidiToWav } from '../audio/fluidsynth.mjs';
-import { renderMidiToWavVst } from '../audio/vst3.mjs';
+import { renderWithBackend } from '../audio/backends.mjs';
 
 // =====================================================================
 // plan
@@ -133,11 +131,7 @@ export async function runMidi(config, songFolder, {
 // render  (score.mid or score.human.mid -> song.wav)
 // =====================================================================
 
-export async function runRender(config, songFolder, {
-    soundfont,
-    gain,
-    keep,
-} = {}) {
+export async function runRender(config, songFolder, { keep = false } = {}) {
     // Prefer the humanized MIDI if it exists and humanize is enabled.
     const h = config.render.humanize;
     const humanMidiPath = path.join(songFolder, 'score.human.mid');
@@ -154,67 +148,19 @@ export async function runRender(config, songFolder, {
 
     const wavPath = path.join(songFolder, 'song.wav');
 
-    const backend = config.render.backend ?? 'fluidsynth';
-    const g = gain ?? config.render.gain;
-    const loudness = config.render.loudness ?? {};
+    // Backend selection, validation, and loudness normalization all live in
+    // the registry; stages only decide which MIDI to render.
+    const result = await renderWithBackend({
+        backend: config.render.backend ?? 'fluidsynth',
+        midiPath,
+        wavPath,
+        config,
+        keep,
+        // Stages run silently on success; the CLI wrappers report instead.
+        silent: true,
+    });
 
-    if (backend === 'vst3') {
-        const routing = config.render.vst3Routing ?? [];
-        if (routing.length === 0) {
-            throw new Error('render.vst3_routing is empty in config.yaml');
-        }
-        for (const r of routing) {
-            if (!fs.existsSync(r.vst3)) {
-                throw new Error(`VST3 not found: ${r.vst3}`);
-            }
-        }
-
-        await renderMidiToWavVst({
-            midiPath,
-            wavPath,
-            routes: routing.map((r) => ({
-                channels: r.channels,
-                vst3: r.vst3,
-                gain: r.gain ?? 1.0,
-            })),
-            sampleRate: config.render.sampleRate,
-            normalize: true,
-            loudness,
-            // Stages run silently on success; the CLI wrappers report instead.
-            silent: true,
-        });
-
-        if (!fs.existsSync(wavPath)) {
-            throw new Error(`midi2wav-vst did not produce ${wavPath}`);
-        }
-        return { wavPath, midiPath };
-    }
-
-    // FluidSynth backend
-    const normMidi = path.join(songFolder, '.score.loud.mid');
-    const normalized = normalizeMidiBuffer(fs.readFileSync(midiPath));
-    fs.writeFileSync(normMidi, normalized.buffer);
-
-    try {
-        await renderMidiToWav({
-            midiPath: normMidi,
-            wavPath,
-            soundfont: (soundfont ?? config.render.soundfont) ?? undefined,
-            gain: g ?? undefined,
-            loudness,
-            keep,
-            silent: true,
-        });
-    } finally {
-        if (!keep) {
-            try { fs.unlinkSync(normMidi); } catch { /* ignore */ }
-        }
-    }
-
-    if (!fs.existsSync(wavPath)) {
-        throw new Error(`midi2wav did not produce ${wavPath}`);
-    }
-    return { wavPath, midiPath };
+    return { wavPath: result.wavPath, midiPath };
 }
 
 // =====================================================================

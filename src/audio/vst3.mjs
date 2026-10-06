@@ -4,12 +4,15 @@
 // Thin wrapper around render_vst_multi.py (Python + Pedalboard). Each MIDI
 // channel is routed to a VST3 per the routing spec; channels not listed are
 // dropped from the render.
+//
+// This is a pure renderer: it does not set the output loudness. Level is
+// decided by src/audio/loudness.mjs, applied by the caller (the backend
+// registry for pipeline runs, the CLI wrapper for manual runs).
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execa } from 'execa';
-import { applyLoudnessTarget } from './loudness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RENDER_SCRIPT = path.join(HERE, 'render_vst_multi.py');
@@ -22,8 +25,7 @@ const RENDER_SCRIPT = path.join(HERE, 'render_vst_multi.py');
  * @param {number} [opts.sampleRate=44100]
  * @param {boolean} [opts.normalize=false] clip-protect the plugin mix
  * @param {boolean} [opts.silent=false] swallow the Python output
- * @param {Object} [opts.loudness] {enabled, targetLufs, truePeakDb}
- * @returns {Promise<{wavPath:string, normalized:boolean}>}
+ * @returns {Promise<{wavPath:string}>}
  */
 export async function renderMidiToWavVst({
     midiPath,
@@ -32,7 +34,6 @@ export async function renderMidiToWavVst({
     sampleRate = 44100,
     normalize = false,
     silent = false,
-    loudness = {},
 }) {
     if (!fs.existsSync(midiPath)) {
         throw new Error(`MIDI not found: ${midiPath}`);
@@ -72,6 +73,5 @@ export async function renderMidiToWavVst({
         throw new Error(`render_vst_multi.py did not produce ${wavPath}`);
     }
 
-    const normalized = await applyLoudnessTarget(wavPath, loudness, { silent });
-    return { wavPath, normalized };
+    return { wavPath };
 }

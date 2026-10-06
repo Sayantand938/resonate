@@ -1,14 +1,16 @@
 // src/audio/fluidsynth.mjs
-// MIDI file → WAV via FluidSynth, with silence trimming and loudness
-// normalization. The default, portable render backend.
+// MIDI file → WAV via FluidSynth, with silence trimming.
 //
-// Pipeline: fluidsynth → ffmpeg silenceremove → loudness normalization
+// Pipeline: fluidsynth → ffmpeg silenceremove
+//
+// This is a pure renderer: it does not set the output loudness. Level is
+// decided by src/audio/loudness.mjs, applied by the caller (the backend
+// registry for pipeline runs, the CLI wrapper for manual runs).
 
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execa } from 'execa';
-import { applyLoudnessTarget } from './loudness.mjs';
 
 /** Where `resonate install-soundfont` puts the SoundFont. */
 export function defaultSoundfontPath() {
@@ -36,9 +38,8 @@ async function run(cmd, cmdArgs, label, silent) {
  * @param {number} [opts.sampleRate=44100]
  * @param {boolean} [opts.keep=false] keep the intermediate WAVs
  * @param {boolean} [opts.silent=false] swallow the tool output
- * @param {Object} [opts.loudness] {enabled, targetLufs, truePeakDb}
- * @param {(n:number,total:number,msg:string)=>void} [opts.onStep]
- * @returns {Promise<Object>}
+ * @param {(msg:string)=>void} [opts.onStep]
+ * @returns {Promise<{wavPath:string, soundfont:string, tempDir:string, keptTemp:boolean}>}
  */
 export async function renderMidiToWav({
     midiPath,
@@ -48,7 +49,6 @@ export async function renderMidiToWav({
     sampleRate = 44100,
     keep = false,
     silent = false,
-    loudness = {},
     onStep,
 }) {
     if (!fs.existsSync(midiPath)) {
@@ -66,13 +66,13 @@ export async function renderMidiToWav({
     const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'resonate-'));
     fs.mkdirSync(path.dirname(wavPath), { recursive: true });
 
-    const step = (n, total, msg) => onStep?.(n, total, msg);
+    const step = (n, total, msg) => onStep?.(`[${n}/${total}] ${msg}`);
 
     try {
         const rawWav = path.join(TMP, 'raw.wav');
 
         // 1. MIDI -> WAV (FluidSynth)
-        step(1, 3, `Rendering MIDI -> WAV via FluidSynth (gain=${gain})`);
+        step(1, 2, `Rendering MIDI -> WAV via FluidSynth (gain=${gain})`);
         await run(
             'fluidsynth',
             ['-g', String(gain), '-F', rawWav, sf, midiPath],
@@ -80,9 +80,8 @@ export async function renderMidiToWav({
             silent
         );
 
-        // 2. Silence-trim (normalization is a separate, shared step so both
-        //    backends land on the same output level).
-        step(2, 3, 'Trimming silence');
+        // 2. Silence-trim
+        step(2, 2, 'Trimming silence');
         await run(
             'ffmpeg',
             [
@@ -102,10 +101,5 @@ export async function renderMidiToWav({
         if (!keep) fs.rmSync(TMP, { recursive: true, force: true });
     }
 
-    const normalized = await applyLoudnessTarget(wavPath, loudness, {
-        silent,
-        onStep: (msg) => step(3, 3, msg),
-    });
-
-    return { wavPath, soundfont: sf, tempDir: TMP, keptTemp: keep, normalized };
+    return { wavPath, soundfont: sf, tempDir: TMP, keptTemp: keep };
 }

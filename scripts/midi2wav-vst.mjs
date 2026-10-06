@@ -2,18 +2,21 @@
 // scripts/midi2wav-vst.mjs — MIDI file → WAV via one or more VST3 instruments.
 //
 // Thin CLI wrapper: argument parsing and file reporting only. The render
-// lives in src/audio/vst3.mjs, which drives render_vst_multi.py.
+// lives in src/audio/vst3.mjs (which drives render_vst_multi.py) and is a
+// pure renderer, so this wrapper applies the loudness target itself.
 //
 // Usage:
 //   node scripts/midi2wav-vst.mjs <in.mid> <out.wav>
 //     --routes '<json>'      OR   --routes-file <path.json>
-//     [--sr 44100] [--normalize]
+//     [--sr 44100] [--clip-protect]
+//     [--lufs -14] [--true-peak -1] [--no-normalize]
 
 import fs from 'node:fs';
 import { renderMidiToWavVst } from '../src/audio/vst3.mjs';
 import {
     DEFAULT_TARGET_LUFS,
     DEFAULT_TRUE_PEAK_DB,
+    applyLoudnessTarget,
 } from '../src/audio/loudness.mjs';
 import { parseArgs, die, requireInOut } from '../src/cli/args.mjs';
 
@@ -52,6 +55,13 @@ try {
     die(`Invalid routes JSON: ${err.message}`);
 }
 
+const onStep = (msg) => console.error(msg);
+const loudness = {
+    enabled: !(args.noNormalize ?? false),
+    targetLufs: args.lufs ?? DEFAULT_TARGET_LUFS,
+    truePeakDb: args.truePeak ?? DEFAULT_TRUE_PEAK_DB,
+};
+
 try {
     await renderMidiToWavVst({
         midiPath: inPath,
@@ -59,12 +69,8 @@ try {
         routes,
         sampleRate: args.sr ?? 44100,
         normalize: args.clipProtect ?? false,
-        loudness: {
-            enabled: !(args.noNormalize ?? false),
-            targetLufs: args.lufs ?? DEFAULT_TARGET_LUFS,
-            truePeakDb: args.truePeak ?? DEFAULT_TRUE_PEAK_DB,
-        },
     });
+    await applyLoudnessTarget(outPath, loudness, { onStep });
 } catch (err) {
     die(err.message);
 }
