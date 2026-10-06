@@ -8,6 +8,7 @@ import { loadConfig } from '../../song/config.mjs';
 import { readMeta, targetFolders } from '../helpers.mjs';
 import { measureLoudness } from '../../audio/loudness.mjs';
 import { findThumbnail, VIDEO_FILENAME } from '../../video/generator.mjs';
+import { parseSongMarkdown } from '../../song/lyrics/parser.mjs';
 
 export function registerShow(program) {
     program
@@ -32,9 +33,8 @@ export function registerShow(program) {
 
                 const songPath = path.join(folder, 'song.md');
                 if (fs.existsSync(songPath)) {
-                    const content = fs.readFileSync(songPath, 'utf8');
-                    const m = content.match(/^#\s+TITLE\s*\n+([^\n#]+)/m);
-                    if (m) console.log(`  title         ${chalk.bold(m[1].trim())}`);
+                    const { title } = parseSongMarkdown(fs.readFileSync(songPath, 'utf8'));
+                    if (title) console.log(`  title         ${chalk.bold(title)}`);
                 }
 
                 const planPath = path.join(folder, 'plan.json');
