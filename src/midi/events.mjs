@@ -18,6 +18,7 @@ import { readVarLen } from './varlen.mjs';
  * @property {number} [channel]      0-15, channel-voice events only
  * @property {number} [note]
  * @property {number} [velocity]
+ * @property {number} [velocityOffset] byte offset of the velocity field
  * @property {number} [statusByte]   full status byte as written
  * @property {Buffer} [bytes]        verbatim bytes, meta and sysex only
  * @property {Buffer} [data]         payload, channelShort only
@@ -33,7 +34,7 @@ export function readHeader(buffer) {
     };
 }
 
-function parseTrack(buffer, chunk) {
+function parseTrack(buffer, chunk, trackIndex) {
     const events = [];
     let p = chunk.dataStart;
     let absTick = 0;
@@ -59,7 +60,12 @@ function parseTrack(buffer, chunk) {
             let typeByte;
             if (status < 0x80) {
                 // Running status: reuse the previous status byte.
-                if (runningStatus == null) break;
+                if (runningStatus == null) {
+                    throw new Error(
+                        `Malformed MIDI: data byte 0x${status.toString(16)} in track `
+                        + `${trackIndex} at byte ${p} has no preceding status byte.`
+                    );
+                }
                 typeByte = runningStatus;
             } else {
                 typeByte = status;
@@ -72,13 +78,16 @@ function parseTrack(buffer, chunk) {
             if (type === 0x90 || type === 0x80) {
                 const note = buffer[p];
                 const vel = buffer[p + 1];
+                // Byte offset of the velocity field, for transforms that
+                // rescale velocities in place.
+                const velocityOffset = p + 1;
                 p += 2;
                 // A note-on with velocity 0 is a note-off in disguise.
                 const isNoteOn = type === 0x90 && vel > 0;
                 events.push({
                     absTick,
                     kind: isNoteOn ? 'noteOn' : 'noteOff',
-                    channel, note, velocity: vel, statusByte: typeByte,
+                    channel, note, velocity: vel, velocityOffset, statusByte: typeByte,
                 });
             } else if (type === 0xC0 || type === 0xD0) {
                 p += 1;
@@ -95,11 +104,23 @@ function parseTrack(buffer, chunk) {
             }
         }
     }
+
+    if (p > chunk.dataEnd) {
+        throw new Error(
+            `Malformed MIDI: an event in track ${trackIndex} declares more bytes `
+            + `than the track holds (ran to ${p}, track ends at ${chunk.dataEnd}).`
+        );
+    }
+
     return events;
 }
 
 /**
  * Parse every track.
+ *
+ * Throws on structurally broken input rather than silently returning the
+ * events it managed to read, so a corrupted file cannot quietly produce a
+ * half-processed result.
  *
  * @param {Buffer} buffer
  * @returns {{tracks: MidiEvent[][], headerLength: number, division: number}}
@@ -111,7 +132,7 @@ export function parseMidiEvents(buffer) {
     if (chunks.length === 0) throw new Error('No MTrk chunks found.');
 
     return {
-        tracks: chunks.map((t) => parseTrack(buffer, t)),
+        tracks: chunks.map((t, i) => parseTrack(buffer, t, i)),
         headerLength: headerLength(buffer),
         division: buffer.readUInt16BE(12),
     };
