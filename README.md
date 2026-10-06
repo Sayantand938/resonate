@@ -46,6 +46,8 @@ resonate all   --force
 
 # See status
 resonate list
+resonate show songs\2026-10-05-neon-on-the-window
+resonate show --loudness          # also measure each song.wav (slower)
 ```
 
 Every stage skips songs whose output already exists. Ctrl+C any time;
@@ -187,4 +189,14 @@ lossy encoding. As their docs put it: *"If a track loudness level is -20 dB
 LUFS, and its True Peak maximum is -5 dB FS, we only lift the track up to
 -16 dB LUFS."* A master that sits low with unused peak headroom therefore
 plays back quieter than its neighbours — it does not get rescued.
+
+To check what a rendered song actually measures, against the configured
+target:
+
+```powershell
+resonate show songs\2026-10-05-neon-on-the-window --loudness
+#   loudness      -14.1 LUFS   -1.0 dBFS peak   on target
+```
+
+The flag is opt-in because it costs a full ffmpeg pass per song.
 

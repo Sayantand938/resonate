@@ -6,12 +6,14 @@ import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
 import { readMeta, targetFolders } from '../helpers.mjs';
+import { measureLoudness } from '../../audio/loudness.mjs';
 
 export function registerShow(program) {
     program
         .command('show [songFolder]')
         .description('Detailed status for one song (or all songs)')
-        .action(async (songFolderArg) => {
+        .option('--loudness', 'measure each song.wav with ffmpeg (slower)')
+        .action(async (songFolderArg, opts) => {
             const config = loadConfig();
             const folders = targetFolders(config, songFolderArg);
 
@@ -88,6 +90,7 @@ export function registerShow(program) {
                 if (fs.existsSync(wavPath)) {
                     const sizeMb = (fs.statSync(wavPath).size / 1024 / 1024).toFixed(1);
                     console.log(`  song.wav      ${chalk.green('[OK]')}  ${sizeMb} MB`);
+                    if (opts.loudness) await printLoudness(wavPath, config);
                 } else {
                     console.log(`  song.wav      ${chalk.dim('[--]')}`);
                 }
@@ -95,4 +98,34 @@ export function registerShow(program) {
 
             console.log('');
         });
+}
+
+/**
+ * Measure a rendered WAV and report it against the configured target.
+ *
+ * Opt-in (`--loudness`) because it costs a full ffmpeg pass per song — fine
+ * for one song, slow across a whole library.
+ */
+async function printLoudness(wavPath, config) {
+    const target = config.render.loudness?.targetLufs ?? -14;
+    const ceiling = config.render.loudness?.truePeakDb ?? -1;
+
+    let measured;
+    try {
+        measured = await measureLoudness(wavPath);
+    } catch (err) {
+        console.log(`  loudness      ${chalk.dim(`[measure failed: ${err.message}]`)}`);
+        return;
+    }
+
+    // loudnorm lands within a few tenths of the target, so allow that slack.
+    const onTarget = Math.abs(measured.inputLufs - target) <= 0.7;
+    const peakOk = measured.inputTruePeak <= ceiling + 0.1;
+    const colour = onTarget && peakOk ? chalk.green : chalk.yellow;
+
+    console.log(
+        `  loudness      ${colour(`${measured.inputLufs.toFixed(1)} LUFS`)}`
+        + `   ${colour(`${measured.inputTruePeak.toFixed(1)} dBFS peak`)}`
+        + `   ${onTarget && peakOk ? chalk.green('on target') : colour(`target ${target} LUFS / ${ceiling} dBTP`)}`
+    );
 }
