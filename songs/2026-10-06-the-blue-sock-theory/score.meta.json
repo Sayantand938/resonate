@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T10:02:18.391Z",
+  "finished_at": "2026-10-06T10:02:40.975Z",
+  "elapsed_ms": 22584,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop with funk-pop and soft R&B inflections, 112 BPM, playful, tender, quietly hopeful, intimate conversational lead vocal, muted electric guitar, warm analog synth, rubbery electric bass, crisp live drums, glockenspiel, verses lean and chorus buoyant, lightly tape-worn warmth with glossy fluorescent shimmer.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nThursday, 2:17, rain ticks hard against the glass  \nI’m counting quarters, wiping soap from washers four and five  \nThe vending coffee tastes like cardboard and burnt sugar  \nThen there it is again—  \nOne bright blue sock inside the dryer  \n\nUnder the lint screen, folded small  \nA joke on paper thin as skin:  \n“Why did the sock cross the road?  \nIt was tired of getting left behind.”  \nI laugh alone, then write beneath it  \n“Mine got farther than yours.”\n\n[Pre-Chorus]  \nReceipt paper, crooked letters  \nTucked where only I would see  \nSomebody out there knows this hour  \nSomebody’s leaving part of them with me  \n\n[Chorus]  \nCall it the blue sock theory  \nOne little thing can keep you here  \nWhen the night runs cold and empty  \nA small blue light appears  \nIf you leave a note, I’ll leave one back  \nIf you disappear, I’ll wait  \nMaybe nobody’s lost forever  \nMaybe we just miss the train  \n\n[Verse 2]  \nBy week three, I know the rhythm  \nDryer twelve, then coffee, then the joke  \n“Why was the washing machine so calm?  \nIt had a lot of inner spin.”  \nI answer, “That one’s terrible,”  \nThen smile before I close the door  \n\nI tell them I used to take the long way home  \nPast the river, past the loading cranes  \nNow I clock out, lock the change machine  \nAnd watch the blue sock turn  \nLike a tiny flag in heavy weather  \n\n[Pre-Chorus]  \nLint-screen dust on both our secrets  \nInk gone soft from steam and heat  \nI don’t know your name or where you’re sleeping  \nStill your handwriting changes me  \n\n[Chorus]  \nCall it the blue sock theory  \nOne little thing can keep you here  \nWhen the night runs cold and empty  \nA small blue light appears  \nIf you leave a note, I’ll leave one back  \nIf you disappear, I’ll wait  \nMaybe nobody’s lost forever  \nMaybe we just miss the train  \n\n[Instrumental Interlude]\n\n[Bridge]  \nThen Thursday comes with no blue cotton  \nNo bad joke, no folded clue  \nJust a note beneath the lint screen:  \n“Had to leave. My mother’s sick.  \nThank you for answering. I needed proof  \nThat the world could still answer too.”  \n\nI read it twice beside the washer  \nRain is running silver down the street  \nAt sunrise, I hang every blue sock  \nIn a row across the window  \nLike a flag for someone I’m ready to meet  \n\n[Final Chorus]  \nCall it the blue sock theory  \nOne little thing can bring you back  \nThrough the glass, I see you standing  \nIn a coat still wet and black  \nYou lift your hand, I lift the door  \nThe whole bright room begins to shake  \nMaybe nobody’s lost forever  \nMaybe we just need one more day  \n\nCall it the blue sock theory  \nYou laugh, and I can hear it clear  \nAll this time, I thought I worked here  \nTurns out I was waiting here  \nIf you leave a note, I’ll leave one back  \nIf you stay, I’ll pour the coffee  \nMaybe nobody’s lost forever  \nMaybe we can start in person  \n\n[Instrumental Outro]",
+      "seed": 1226635846
+    }
+  },
+  "seed": 1226635846,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 4054,
+    "abc_lines": 177
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 1226635846 in config.yaml, then run: resonate score <song-folder> --force"
+}

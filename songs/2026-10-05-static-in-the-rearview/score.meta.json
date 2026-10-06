@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T09:40:46.768Z",
+  "finished_at": "2026-10-06T09:41:05.664Z",
+  "elapsed_ms": 18896,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Alternative rock with indie-pop hooks at 142 BPM, restless, bruised, defiant, urgent slightly ragged lead vocal, overdriven electric guitars, melodic electric bass, live drum kit, analog synth, piano, tight verses opening into a wide cathartic chorus, gritty tape saturation and raw room warmth.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nThe video store is locked from the inside  \nDust on the counter, dead neon sign  \nI pull my duffel from the back room floor  \nPast the cardboard cutouts and the bolted door  \n\nOutside, the town is dressing up in flame  \nKids on the sidewalks shouting every name  \nI find my keys beneath a stack of tapes  \nAnd leave the only place that knew my face  \n\n[Pre-Chorus]  \nThen you show up with a cracked cassette  \nSaying, “You can’t disappear like this yet”  \nYou hold it out like proof I owe  \nEvery street I’m finally letting go  \n\n[Chorus]  \nStatic in the rearview, fire across the glass  \nAll the words I swallowed here are coming back at last  \nIf leaving is a crime, write it on the county line  \nI’m not running from my past  \nI’m taking back my life  \n\n[Verse 2]  \nYou say the ones who stayed are still awake  \nStill working double shifts for barely pay  \nStill meeting by the laundromat at ten  \nStill asking where I went, and who I think I am  \n\nI put the tape into the dashboard slot  \nIt chews for half a second, then it catches hot  \nThe fireworks turn the windshield red and white  \nI miss the turn, then take it anyway tonight  \n\n[Pre-Chorus]  \nAt the gas station, coffee tastes like tin  \nYou say, “You’ll call when all this wears you thin”  \nI watch the county sign go sliding by  \nYour voice gets smaller in the passenger side  \n\n[Chorus]  \nStatic in the rearview, fire across the glass  \nAll the words I swallowed here are coming back at last  \nIf leaving is a crime, write it on the county line  \nI’m not running from my past  \nI’m taking back my life  \n\n[Instrumental Interlude]\n\n[Bridge]  \nAnd there I am at seventeen  \nTalking too loud in somebody’s basement  \nSinging into a cheap machine  \nLike I could make the whole world listen  \n\nThe tape goes thin, then my voice comes through  \n“Don’t let them tell you what you’re meant to do”  \nI almost turn around beneath the overpass  \nBut the younger me keeps singing back  \n\n[Final Chorus]  \nStatic in the rearview, sparks across the glass  \nEvery mile I drive makes room for what comes next  \nLet the locked doors rust, let the old names fade  \nI’m not running from my past  \nI’m taking back my voice  \nStatic in the rearview, sunrise turning gray  \nNo promise waiting for me, but I’m on my way  \nIf leaving is a crime, write it on the county line  \nI’m not running from my past  \nI’m taking back my life  \n\n[Instrumental Outro]",
+      "seed": 722456186
+    }
+  },
+  "seed": 722456186,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 3388,
+    "abc_lines": 160
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 722456186 in config.yaml, then run: resonate score <song-folder> --force"
+}

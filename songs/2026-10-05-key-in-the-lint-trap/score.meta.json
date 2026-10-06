@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T09:40:20.901Z",
+  "finished_at": "2026-10-06T09:40:46.764Z",
+  "elapsed_ms": 25862,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop, 112 BPM, bittersweet and quietly triumphant, intimate conversational lead vocal, chiming electric guitar, Wurlitzer, warm synth bass, acoustic drums, handclaps, verses close and chorus wide, glossy cassette grain with bright room reverb",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nIt’s 2:13, red numbers on the wall  \nRain draws crooked lines across the glass  \nI’m washing what I carried from the old place  \nYou’re folding quarters by the change machine  \nLike we just happen to be strangers here  \nLike this isn’t your favorite laundromat  \n\nYou say, “How’ve you been?” I say, “Keeping busy”  \nThe dryer turns a blue sock inside out  \nThere’s detergent in the cuffs of my old jacket  \nAnd one more thing we haven’t talked about  \n\n[Pre-Chorus]  \nYou ask if I still have it  \nI ask if you still do  \nThe little silver answer  \nTo a door we’re both through  \n\n[Chorus]  \nMaybe closure’s in the lint trap  \nUnder everything we leave behind  \nNot in the words you never gave me  \nNot in changing either mind  \nLet the quarters line the table  \nLet the rain erase the street  \nIf I walk out clean tomorrow  \nThat’s enough for me  \n\n[Verse 2]  \nThe machine eats one of your quarters  \nYou tap the glass like it can hear  \nYou say, “I thought you’d bring the spare key”  \nI say, “I thought you’d want it back this year”  \n\nThe dryers thump against the rainy morning  \nThe fluorescent lights begin to fade  \nYou tell me that the rent went up in April  \nI tell you that the coffee’s still too late  \n\nAnd somewhere underneath the small talk  \nThe question loses all its shape  \nNo courtroom, no dramatic ending  \nJust warm clothes and a little break  \n\n[Pre-Chorus]  \nYou ask if I resent you  \nI watch the blue sock spin  \nThe room keeps turning softly  \nAnd neither of us wins  \n\n[Chorus]  \nMaybe closure’s in the lint trap  \nUnder everything we leave behind  \nNot in the words you never gave me  \nNot in changing either mind  \nLet the quarters line the table  \nLet the rain erase the street  \nIf I walk out clean tomorrow  \nThat’s enough for me  \n\n[Instrumental Interlude]\n\n[Bridge]  \nThe dryer stops with a tired little shudder  \nYou pull the door, I reach inside  \nThere it is beside the blue sock  \nSilver, stupid, warm, and mine  \n\nI hold it up beneath the buzzing  \nYou laugh once, then look away  \nAll this time it wasn’t in your keeping  \nIt was waiting where the dust collects  \n\nI put it in the pocket of my clean shirt  \nNo speech arrives, and none is due  \nThe sky turns silver in the windows  \nAnd I don’t need to come back through  \n\n[Final Chorus]  \nI found the key in the lint trap  \nUnder everything we leave behind  \nNot in the words you never gave me  \nNot in changing either mind  \nLet the quarters line the table  \nLet the rain erase the street  \nI walk out clean into the morning  \nWith the whole day under me  \n\nI found the key in the lint trap  \nBlue sock tumbling, windows bright  \nYou can keep the old apartment  \nI’ve got nothing there tonight  \nLet the quarters line the table  \nLet the last machine repeat  \nI walk out clean into the morning  \nAnd the door stays where it’s meant to be  \n\n[Instrumental Outro]",
+      "seed": 1434533248
+    }
+  },
+  "seed": 1434533248,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 4003,
+    "abc_lines": 199
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 1434533248 in config.yaml, then run: resonate score <song-folder> --force"
+}

@@ -1,0 +1,31 @@
+{
+  "title": "The Jellyfish Keep Time",
+  "genre": "indie pop / alt-R&B",
+  "mood": "bittersweet, buoyant, quietly triumphant",
+  "theme": "Choosing the life unfolding in front of you instead of returning to a relationship that only exists in memory.",
+  "story": "During an overnight shift cleaning a downtown aquarium, the narrator finds a voice note from an ex asking to meet before sunrise. They spend the night replaying old promises while the jellyfish drift through blue light and the wedding invitation in their locker stays unopened. At dawn, they finally answer with a kind refusal, then remain at work to open the doors for a group of schoolchildren. The aquarium lights rise as the narrator realizes they have stopped waiting for the past to come back.",
+  "setting": "A nearly empty aquarium from 2:00 a.m. to dawn, with blue tank light on wet tile, humming filtration pumps, chlorine on the air, and the city turning silver beyond the glass.",
+  "perspective": "First person, present tense, an overnight aquarium cleaner speaking directly to an absent ex.",
+  "motifs": [
+    "Jellyfish pulsing like clocks",
+    "A damp wedding invitation",
+    "Blue light on wet tile",
+    "A phone voice note replaying",
+    "Filtration pumps humming",
+    "Children arriving at dawn"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop / alt-R&B at 108 BPM, bittersweet but buoyant, quietly triumphant; expressive close-miked lead vocal with a conversational lift; rubbery synth bass, glassy electric piano, muted guitar, crisp live drums, celesta. Build around a circular chorus hook and widen the final refrain with stacked harmonies. Polished nocturnal production with soft fluorescent grain."
+}

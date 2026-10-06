@@ -1,0 +1,31 @@
+{
+  "title": "Jellyfish After Closing",
+  "genre": "indie pop / alternative R&B",
+  "mood": "bittersweet, nocturnal, quietly triumphant",
+  "theme": "Saying goodbye becomes an act of love when you stop mistaking familiarity for a future.",
+  "story": "After months of silence, the narrator receives a one-line text from an ex asking them to meet at the aquarium after closing. They walk past empty tanks together, avoiding the real subject until the ex reveals they are moving across the country at dawn. Beneath the jellyfish, the narrator nearly asks to come along, then chooses instead to record one final voice memo and let the moment remain beautiful. At sunrise, they leave through the employee exit alone, carrying a small glow from the gift shop.",
+  "setting": "A city aquarium just after midnight in early autumn, with blue tank light on wet tile, humming filtration pumps, fogged glass, and the first gray buses passing outside at dawn.",
+  "perspective": "First person, present-tense narrator revisiting the final night of a relationship while it is happening.",
+  "motifs": [
+    "jellyfish pulsing like suspended lanterns",
+    "a cracked phone screen",
+    "employee-only doors",
+    "saltwater on black tile",
+    "the last train announcement",
+    "a tiny glow-in-the-dark keychain"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop / alternative R&B at 104 BPM, bittersweet, lucid, quietly triumphant; intimate alto vocal with conversational phrasing; rubbery synth bass, glassy electric piano, muted guitar, crisp drum machine, warm analog pads. Build from close, nocturnal verses into a wide, luminous chorus, with polished late-night production and a gently grainy cassette edge."
+}

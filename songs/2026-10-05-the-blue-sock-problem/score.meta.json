@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T09:41:05.665Z",
+  "finished_at": "2026-10-06T09:41:22.152Z",
+  "elapsed_ms": 16487,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop with bedroom-pop edges, 112 BPM, wistful, buoyant, quietly defiant, intimate close-mic alto vocal, clean electric guitar, warm synth bass, drum machine, glockenspiel, muted piano, verses sparse and chorus wider, homemade cassette grain with crisp modern low end.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nIt’s 2:17, the block is empty  \nRain draws lines across the glass  \nI carry one last basket down here  \nLike it might explain the past  \n\nThe apartment’s clean in all the wrong ways  \nNo jacket hanging by the door  \nYour keys are gone, the room keeps ringing  \nLike they’re still turning in the lock  \n\n[Pre-Chorus]  \nThen behind the dryer window  \nSomething blue goes round and round  \nI take a picture in the humming  \nLike I’ve finally found you now  \n\n[Chorus]  \nIt’s the blue sock problem  \nOne small thing I can hold  \nI make it sound important  \nSo I don’t have to let you go  \nMaybe you’ll come meet me  \nMaybe you’ll say you changed  \nI keep giving little reasons  \nTo put your name back in my day  \n\n[Instrumental Interlude]\n\n[Verse 2]  \nThe vending coffee tastes like pennies  \nI type, “I think you left this here”  \nThen I watch the message waiting  \nLike a dare I won’t send near  \n\nThe washers blink in tired colors  \nSomeone’s coat is on a chair  \nOutside, a bus rolls past the window  \nAnd doesn’t stop for anyone there  \n\nI turn the sock around my fingers  \nCheck the heel, the faded seam  \nThere’s a thread I pulled last winter  \nWhen you were sleeping next to me  \n\n[Pre-Chorus]  \nAnd I know the shape of silence  \nI know when a door is closed  \nStill I let the dryer answer  \nWith its little thunderous no  \n\n[Chorus]  \nIt’s the blue sock problem  \nOne small thing I can hold  \nI make it sound important  \nSo I don’t have to let you go  \nMaybe you’ll come meet me  \nMaybe you’ll say my name  \nI keep giving little reasons  \nTo make goodbye take a different shape  \n\n[Bridge]  \nIt’s mine  \nThe stupid blue sock is mine  \nI bought the pair on Harlow Street  \nBefore I ever knew your life  \n\nIt’s mine  \nAnd so is this long walk home  \nI don’t need you to come get it  \nI don’t need another phone call  \n\nThe text stays there, unopened  \nBright against the morning sky  \nI put the sock into my pocket  \nAnd let your number stay behind  \n\n[Final Chorus]  \nIt was the blue sock problem  \nOne small thing I could hold  \nI made it sound important  \nSo I wouldn’t have to let you go  \nNow the sun comes up between the buildings  \nAnd the rain has lost its weight  \nI keep walking with my blue sock  \nAnd I leave your number where it stayed  \n\nIt was the blue sock problem  \nNothing more and nothing less  \nI thought I needed one last reason  \nTurns out I needed to stop inventing them  \n\n[Instrumental Outro]",
+      "seed": 721980843
+    }
+  },
+  "seed": 721980843,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 3103,
+    "abc_lines": 155
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 721980843 in config.yaml, then run: resonate score <song-folder> --force"
+}

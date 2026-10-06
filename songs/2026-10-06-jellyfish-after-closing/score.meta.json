@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T10:01:57.455Z",
+  "finished_at": "2026-10-06T10:02:18.390Z",
+  "elapsed_ms": 20935,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop / alternative R&B, 104 BPM, bittersweet, lucid, quietly triumphant, intimate alto vocal with conversational phrasing, rubbery synth bass, glassy electric piano, muted guitar, crisp drum machine, warm analog pads, verses close and nocturnal, chorus wide and luminous, polished late-night production with gently grainy cassette warmth.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nYour text says, “Aquarium. After close?”  \nOne line glowing through my cracked phone screen  \nI put on the jacket you left at my place  \nAnd take the last train downtown at 12:15  \n\nYou’re waiting by the employee-only doors  \nHands in your pockets, hair damp from the rain  \nThe lobby smells like saltwater and bleach  \nNeither of us says the other’s name  \n\nWe walk past sharks asleep in blue  \nPast fogged-up glass and the humming pumps  \nYour shoulder almost touches mine  \nThen both of us remember not to  \n\n[Pre-Chorus]  \nThe last train makes its announcement  \nSomewhere under the city floor  \nYou look at me like you’re still deciding  \nWhat this night is for  \n\n[Chorus]  \nUnder the jellyfish after closing  \nEverything moves slow and bright  \nYou tell me you’re leaving in the morning  \nI say, “I know,” though I don’t know why  \n\nThere’s a little blue light between us  \nPulsing like it wants to stay  \nI could ask you to take me with you  \nBut I let the beautiful thing end this way  \n\n[Verse 2]  \nWe sit beside the moon jelly tank  \nYour knees drawn up against the rail  \nYou say the new job starts on Monday  \nThree time zones and a rented place  \n\nI ask if you’ve packed the coffee maker  \nYou laugh, then look down at your shoes  \nThe pumps keep turning in the walls  \nLike the building has a pulse to lose  \n\nOutside, the city thins to silence  \nWet black tile beneath our feet  \nYou touch the scar beside my thumb  \nLike you’re checking if I’m still me  \n\n[Pre-Chorus]  \nThe first gray buses start to gather  \nBehind the loading bay  \nYou say, “I thought you might be angry”  \nI say, “I was yesterday”  \n\n[Chorus]  \nUnder the jellyfish after closing  \nEverything moves slow and bright  \nYou tell me you’re leaving in the morning  \nI say, “I know,” though I don’t know why  \n\nThere’s a little blue light between us  \nPulsing like it wants to stay  \nI could ask you to take me with you  \nBut I let the beautiful thing end this way  \n\n[Instrumental Interlude]\n\n[Bridge]  \nAt the gift shop, I buy a keychain  \nTiny plastic moon in a paper bag  \nYou say, “You could come, you know”  \nSo quietly I almost miss the chance  \n\nMy phone is warm against my palm  \nThe screen is cracked across your face  \nI open up a voice memo  \nAnd give the silence somewhere to go  \n\n“Thank you for the years we had  \nEven the ones we couldn’t save  \nI loved you past the point of holding  \nI’m letting love become a doorway”  \n\n[Final Chorus]  \nUnder the jellyfish after closing  \nEverything moves slow and bright  \nYou’re leaving with the morning buses  \nI’m learning not to call it mine  \n\nThere’s a little blue light between us  \nStill pulsing as you walk away  \nI could ask you to take me with you  \nBut I let the beautiful thing end this way  \n\nJellyfish after closing  \nBlue fire fading into gray  \nI leave through the employee exit  \nWith your last night glowing in my hand  \n\n[Instrumental Outro]",
+      "seed": 409302356
+    }
+  },
+  "seed": 409302356,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 3974,
+    "abc_lines": 174
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 409302356 in config.yaml, then run: resonate score <song-folder> --force"
+}

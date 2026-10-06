@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T09:41:22.154Z",
+  "finished_at": "2026-10-06T09:41:40.019Z",
+  "elapsed_ms": 17865,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop, 112 BPM, restless, tender, quietly hopeful, intimate conversational lead vocal, chorusy electric guitar, warm analog synth, melodic electric bass, crisp acoustic drums, subtle piano, verses sparse and close, chorus wider and lifting, polished bedroom-pop texture with fluorescent-night shimmer and gently compressed vocals.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nIt’s 2:17 in late November  \nRain draws lines down the window glass  \nThe ceiling lights keep buzzing overhead  \nLike they don’t know the night has passed  \n\nYour denim jacket’s heavy with water  \nOne sleeve twisted inside out  \nI feed the coins into the washer  \nAnd watch the blue street flicker out  \n\n[Pre-Chorus]  \nThen something hard hits the metal drum  \nA little paper folded twice  \nI pull it from the pocket  \nAnd read the date beneath the lights  \n\n[Chorus]  \nI’m not forgetting, I’m learning the shape  \nOf a life with your shadow not taking the space  \nThe dryers keep turning, the whole room shines  \nI can carry what happened and still take the first bus I find  \n\nI don’t have to chase you to prove I still care  \nI can leave your name folded somewhere  \nBetween what was ours and the morning sky  \nI can carry the memory and still choose my life  \n\n[Instrumental Interlude]\n\n[Verse 2]  \nOne train, 7:05, tomorrow morning  \nTwo seats from the back, one-way fare  \nI picture you beside the station  \nRain in your hair, your suitcase there  \n\nThe sign above the change machine is blinking  \nA bus sighs low along the street  \nFor half a second, I’m already running  \nWith your jacket hanging from my sleeve  \n\n[Pre-Chorus]  \nBut the washer clicks into silence  \nAnd the last spin slows down  \nI hear my own breath in the quiet  \nLike a door unlocking now  \n\n[Chorus]  \nI’m not forgetting, I’m learning the shape  \nOf a life with your shadow not taking the space  \nThe dryers keep turning, the whole room shines  \nI can carry what happened and still take the first bus I find  \n\nI don’t have to chase you to prove I still care  \nI can leave your name folded somewhere  \nBetween what was ours and the morning sky  \nI can carry the memory and still choose my life  \n\n[Bridge]  \nI take the warm clothes from the dryer  \nFold the sleeves, smooth out the seams  \nPut the ticket in the lost-and-found box  \nWith the jacket, the shirt, and the in-between  \n\nNo grand goodbye, no final answer  \nJust wet pavement turning silver-blue  \nI miss you more than I expected  \nBut missing you is not a road I have to follow through  \n\n[Final Chorus]  \nI’m not forgetting, I’m learning the shape  \nOf a life with your shadow not taking the space  \nThe dryers stop turning, the whole room shines  \nI can carry what happened and still take the first bus I find  \n\nI don’t have to chase you to prove I still care  \nI can leave your name folded somewhere  \nThe morning comes softly through the glass  \nI take my unfinished life and let the old night pass  \n\nI can carry the memory  \nI can carry the memory  \nAnd still choose my life  \n\n[Instrumental Outro]",
+      "seed": 1728705998
+    }
+  },
+  "seed": 1728705998,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 3402,
+    "abc_lines": 172
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 1728705998 in config.yaml, then run: resonate score <song-folder> --force"
+}

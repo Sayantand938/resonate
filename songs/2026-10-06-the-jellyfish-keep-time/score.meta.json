@@ -1,0 +1,31 @@
+{
+  "provider": "yue2",
+  "endpoint": "http://127.0.0.1:8080/v1/tasks/run",
+  "model": "yue2-music",
+  "requested_at": "2026-10-06T10:02:40.976Z",
+  "finished_at": "2026-10-06T10:02:56.327Z",
+  "elapsed_ms": 15351,
+  "request": {
+    "model": "yue2-music",
+    "request": {
+      "options": {
+        "style": "Indie pop / alt-R&B, 108 BPM, bittersweet, buoyant, quietly triumphant, intimate conversational lead vocal, rubbery synth bass, glassy electric piano, muted nylon-string guitar, crisp live drums, celesta, verses spare and chorus wider, polished nocturnal production with soft fluorescent grain and gentle low-mid warmth.",
+        "cot": "full",
+        "stop_after": "abc"
+      },
+      "lyrics": "[Instrumental Intro]\n\n[Verse 1]  \nIt’s 2:07, I’m wringing out the mop  \nBlue light breaking on the tile  \nThe pumps keep humming through the dark  \nLike they’ve been up here all the while  \n\nYour voice note waits beneath the keys  \nI press play, then watch the glass  \nYou say, “Can we meet before sunrise?”  \nLike the years between us passed  \n\nThe jellyfish rise, the jellyfish fall  \nSoft as a thought I can’t quite hold  \nEvery pulse in the blue-lit wall  \nSays nothing stays the way it’s told  \n\n[Pre-Chorus]  \nIn my locker, your invitation  \nGets damp around the edges  \nI keep my hand above the name  \nAnd listen to the water instead  \n\n[Chorus]  \nThe jellyfish keep time, keep time  \nWhile the whole city sleeps outside  \nThey don’t go back, they don’t rewind  \nThey move with the current and call it life  \n\nAnd I can hear your old words shine  \nBut they don’t fit this morning light  \nThe jellyfish keep time, keep time  \nAnd I’m still here when the dark turns white  \n\n[Verse 2]  \nI replay the part about forever  \nBy the tunnel with the sharks  \nYou were laughing in the kitchen  \nWith the rain against the glass  \n\nI used to think the door was waiting  \nFor the shape of you to come  \nNow the floor machine is whining  \nAnd the first train starts to run  \n\nSilver climbs the office windows  \nChlorine sharp inside my throat  \nI fold the invitation closed  \nBut I don’t throw it in the boat  \n\n[Pre-Chorus]  \nThere’s a whole night in that message  \nThere’s a version of us sleeping  \nI let it finish speaking  \nI let the silence keep it  \n\n[Chorus]  \nThe jellyfish keep time, keep time  \nWhile the whole city sleeps outside  \nThey don’t go back, they don’t rewind  \nThey move with the current and call it life  \n\nAnd I can hear your old words shine  \nBut they don’t fit this morning light  \nThe jellyfish keep time, keep time  \nAnd I’m still here when the dark turns white  \n\n[Instrumental Interlude]\n\n[Bridge]  \nAt 5:41, I call you back  \nThe loading dock is turning gold  \nI say, “I hope you’re well, I mean it  \nBut I’m not coming to be told  \n\nThat what we had is waiting somewhere  \nIf I’d only change my mind  \nI’ve been waiting for a ghost  \nAnd I’m leaving it behind”  \n\nThen the locks release like small bells  \nThe front doors breathe apart  \nA bus pulls up with sleepy faces  \nAnd bright backpacks full of stars  \n\n[Final Chorus]  \nThe jellyfish keep time, keep time  \nAnd the whole blue room comes alive  \nThey don’t go back, they don’t rewind  \nThey move with the current and call it life  \n\nI can hear your old words fade  \nPast the glass and through the day  \nThe jellyfish keep time, keep time  \nAnd I’m not waiting for you to change  \n\nThe jellyfish keep time, keep time  \nEvery pulse says I’m alright  \nThe children run toward the rising lights  \nAnd I open the doors to my life  \n\n[Instrumental Outro]",
+      "seed": 1102092833
+    }
+  },
+  "seed": 1102092833,
+  "response_summary": {
+    "top_level_keys": [
+      "artifacts",
+      "timing"
+    ],
+    "has_artifacts": true,
+    "abc_length": 3063,
+    "abc_lines": 146
+  },
+  "recreate_hint": "Set score.seed_mode: fixed and score.seed: 1102092833 in config.yaml, then run: resonate score <song-folder> --force"
+}

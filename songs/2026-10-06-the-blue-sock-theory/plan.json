@@ -1,0 +1,31 @@
+{
+  "title": "The Blue Sock Theory",
+  "genre": "indie pop with funk-pop and subtle R&B inflections",
+  "mood": "playful, tender, quietly hopeful",
+  "theme": "A night-shift laundromat worker learns that small acts of anonymous care can become a reason to step back into life.",
+  "story": "Every Thursday at 2:17 a.m., the narrator finds one bright blue sock abandoned in the same dryer, along with a handwritten joke tucked beneath the lint screen. They begin answering on receipt paper, turning the laundromat into a secret correspondence with an unknown customer. One night, the notes stop and the narrator discovers the writer has left town after a family crisis. At sunrise, the narrator hangs the collected socks on the laundromat window and finds the stranger waiting outside, ready to begin again in person.",
+  "setting": "A fluorescent twenty-four-hour laundromat on a rainy industrial street, from midnight through blue dawn; warm dryer glass, detergent foam, humming machines, wet pavement, and vending-machine coffee.",
+  "perspective": "First person, present tense, a solitary night-shift worker gradually becoming emotionally brave.",
+  "motifs": [
+    "a single bright blue sock",
+    "receipt-paper notes",
+    "spinning dryer windows",
+    "lint-screen dust",
+    "vending-machine coffee",
+    "rain turning into dawn"
+  ],
+  "structure": [
+    "[Instrumental Intro]",
+    "[Verse 1]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Verse 2]",
+    "[Pre-Chorus]",
+    "[Chorus]",
+    "[Instrumental Interlude]",
+    "[Bridge]",
+    "[Final Chorus]",
+    "[Instrumental Outro]"
+  ],
+  "style_prompt": "Indie pop with funk-pop and soft R&B inflections, 112 BPM, playful and tender, intimate conversational lead vocal with bright harmonies, muted electric guitar, warm analog synth, rubbery bass, crisp live drums, glockenspiel. Build toward a buoyant communal final chorus. Polished nocturnal production with lightly tape-worn warmth and glossy fluorescent shimmer."
+}
