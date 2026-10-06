@@ -34,6 +34,7 @@ resonate lyrics --theme "rainy Tokyo at night"
 resonate score              # all songs that need it
 resonate midi               # all songs that need it
 resonate render             # all songs that need it
+resonate video              # all songs that have a thumbnail
 resonate all                # score → midi → render
 
 # One song only
@@ -83,6 +84,7 @@ src/
     fluidsynth.mjs    FluidSynth + ffmpeg (portable default)
     vst3.mjs          VST3 instruments (Python + Pedalboard)
     render_vst_multi.py
+  video/generator.mjs song.wav + thumbnail → song.mp4
 
 scripts/              standalone CLIs for each stage, plus install-soundfont.ps1
 tools/                dev forensics — see tools/README.md
@@ -103,11 +105,13 @@ by the registry afterwards, so a backend cannot skip it.
 
 ```
 songs/<date>-<slug>/
-├── plan.json    creative plan        (source)
-├── song.md      lyrics + style       (source)
-├── score.abc    ABC notation         (source)
-├── score.mid    MIDI                 (regenerable)
-└── song.wav     final audio          (regenerable)
+├── plan.json     creative plan       (source)
+├── song.md       lyrics + style      (source)
+├── score.abc     ABC notation        (source)
+├── thumbnail.png cover art           (source, optional — needed for video)
+├── score.mid     MIDI                (regenerable)
+├── song.wav      final audio         (regenerable)
+└── song.mp4      upload-ready video  (regenerable)
 ```
 
 ## Configuration
@@ -199,4 +203,55 @@ resonate show songs\2026-10-05-neon-on-the-window --loudness
 ```
 
 The flag is opt-in because it costs a full ffmpeg pass per song.
+
+## Video
+
+`resonate video` pairs the rendered audio with a still image and writes
+`song.mp4`, ready to upload:
+
+```powershell
+resonate video                                  # every song that has a thumbnail
+resonate video songs\2026-10-05-neon-on-the-window
+resonate video --force                          # rebuild existing videos
+```
+
+Drop one of these next to `song.wav`:
+
+```
+songs/<date>-<slug>/thumbnail.png     ← or .jpg / .jpeg / .webp
+```
+
+**The thumbnail is required.** A song without one is skipped with a warning
+rather than rendered with a placeholder — the video is nothing but that
+image, so there is nothing sensible to guess:
+
+```
+2026-10-05-the-blue-sock-problem
+  video   [--] (thumbnail file not present)
+
+[video] 0 songs rendered to video, 8 skipped, 0 failed.
+
+Warnings:
+  - 2026-10-05-the-blue-sock-problem  —  thumbnail file not present
+```
+
+A thumbnail is a *source*: it is tracked in git, unlike the video. `song.mp4`
+is regenerable and gitignored.
+
+Video settings live under `video:` in `config.yaml`. The one worth knowing
+about is `fit`, which decides what happens when the artwork is not already
+16:9:
+
+| `fit` | Result |
+|-------|--------|
+| `blur` (default) | A blurred copy of the artwork fills the frame behind it |
+| `pad` | Artwork centred on black bars, nothing cropped |
+| `crop` | Artwork scaled to cover, overhang trimmed |
+
+Output is H.264 (yuv420p) + AAC with `+faststart`, so it plays everywhere and
+YouTube can begin serving before the whole file is fetched. As a rough guide,
+a 4:20 track takes about 45 seconds to encode and lands around 10 MB.
+
+`video` is deliberately **not** part of `resonate all`: most songs will not
+have artwork yet, and a batch of warnings on every run would be noise.
 

@@ -8,6 +8,7 @@ import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
 import { findSongFolders } from '../../song/paths.mjs';
 import { readMeta } from '../helpers.mjs';
+import { VIDEO_FILENAME } from '../../video/generator.mjs';
 
 export function registerList(program) {
     program
@@ -26,8 +27,8 @@ export function registerList(program) {
             const MISS = chalk.dim('[--]');
 
             const table = new Table({
-                head: ['plan', 'lyrics', 'score', 'meta', 'midi', 'wav', 'song'],
-                colAligns: ['middle', 'middle', 'middle', 'middle', 'middle', 'middle', 'left'],
+                head: ['plan', 'lyrics', 'score', 'meta', 'midi', 'wav', 'video', 'song'],
+                colAligns: ['middle', 'middle', 'middle', 'middle', 'middle', 'middle', 'middle', 'left'],
                 style: { head: [], border: [] },
             });
 
@@ -42,6 +43,7 @@ export function registerList(program) {
                     meta ? OK : MISS,
                     has('score.mid') ? OK : MISS,
                     has('song.wav') ? OK : MISS,
+                    has(VIDEO_FILENAME) ? OK : MISS,
                     path.basename(folder),
                 ]);
             }

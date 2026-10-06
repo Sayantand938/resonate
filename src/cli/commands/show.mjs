@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
 import { readMeta, targetFolders } from '../helpers.mjs';
 import { measureLoudness } from '../../audio/loudness.mjs';
+import { findThumbnail, VIDEO_FILENAME } from '../../video/generator.mjs';
 
 export function registerShow(program) {
     program
@@ -93,6 +94,20 @@ export function registerShow(program) {
                     if (opts.loudness) await printLoudness(wavPath, config);
                 } else {
                     console.log(`  song.wav      ${chalk.dim('[--]')}`);
+                }
+
+                const videoPath = path.join(folder, VIDEO_FILENAME);
+                const thumb = findThumbnail(folder);
+                if (fs.existsSync(videoPath)) {
+                    const sizeMb = (fs.statSync(videoPath).size / 1024 / 1024).toFixed(1);
+                    console.log(`  ${VIDEO_FILENAME.padEnd(13)} ${chalk.green('[OK]')}  ${sizeMb} MB`);
+                } else if (!thumb) {
+                    console.log(
+                        `  ${VIDEO_FILENAME.padEnd(13)} ${chalk.yellow('[--]')}`
+                        + `  ${chalk.yellow('thumbnail file not present')}`
+                    );
+                } else {
+                    console.log(`  ${VIDEO_FILENAME.padEnd(13)} ${chalk.dim('[--]')}`);
                 }
             }
 

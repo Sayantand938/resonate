@@ -18,8 +18,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { findSongFolders } from './paths.mjs';
 import {
-    runPlan, runWrite, runScore, runMidi, runRender,
+    runPlan, runWrite, runScore, runMidi, runRender, runVideo,
 } from './stages.mjs';
+import { findThumbnail, VIDEO_FILENAME } from '../video/generator.mjs';
 
 // =====================================================================
 // helpers
@@ -33,8 +34,8 @@ function listTargetFolders(config, folder) {
 function resultOk(folder, extra = {}) {
     return { ok: true, folder, ...extra };
 }
-function resultSkip(folder, reason, stage) {
-    return { ok: true, folder, skipped: true, reason, stage };
+function resultSkip(folder, reason, stage, extra = {}) {
+    return { ok: true, folder, skipped: true, reason, stage, ...extra };
 }
 function resultFail(folder, error, stage) {
     return { ok: false, folder, error, stage };
@@ -228,6 +229,67 @@ export async function stageRender(config, {
             if (progress) progress({ phase: 'done', folder: f, result: r });
         } catch (err) {
             const r = resultFail(f, err.message, 'render');
+            results.push(r);
+            if (progress) progress({ phase: 'fail', folder: f, result: r });
+        }
+    }
+
+    return results;
+}
+
+// =====================================================================
+// video — song.wav + thumbnail → song.mp4
+// =====================================================================
+
+export async function stageVideo(config, {
+    folder = null,
+    force = false,
+    onProgress,
+} = {}) {
+    const folders = listTargetFolders(config, folder);
+    const results = [];
+    const progress = taggedProgress(onProgress, 'video');
+
+    for (const f of folders) {
+        const name = path.basename(f);
+        const wavPath = path.join(f, 'song.wav');
+        const videoPath = path.join(f, VIDEO_FILENAME);
+
+        if (!fs.existsSync(wavPath)) {
+            const r = resultSkip(f, 'no song.wav', 'video');
+            results.push(r);
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
+            continue;
+        }
+        if (fs.existsSync(videoPath) && !force) {
+            const r = resultSkip(f, `${VIDEO_FILENAME} exists`, 'video');
+            results.push(r);
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
+            continue;
+        }
+
+        // No thumbnail, no video: we never invent cover art.
+        if (!findThumbnail(f)) {
+            const r = resultSkip(f, 'thumbnail file not present', 'video', {
+                warn: true,
+            });
+            results.push(r);
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
+            continue;
+        }
+
+        if (progress) progress({ phase: 'start', folder: f, label: name });
+        try {
+            const out = await runVideo(config, f);
+            const r = resultOk(f, {
+                stage: 'video',
+                outputPath: out.outPath,
+                thumbnail: out.imagePath,
+            });
+            results.push(r);
+            if (progress) progress({ phase: 'done', folder: f, result: r });
+        } catch (err) {
+            const r = resultFail(f, err.message, 'video');
             results.push(r);
             if (progress) progress({ phase: 'fail', folder: f, result: r });
         }

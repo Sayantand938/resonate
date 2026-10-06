@@ -101,3 +101,23 @@ render:
     ins:             0
     accompaniment:   0
     accompaniment2:  0
+
+# Video: `resonate video` pairs song.wav with the still image in the song
+# folder (thumbnail.png / .jpg / .jpeg / .webp) and writes song.mp4.
+# Songs without a thumbnail are skipped with a warning, never guessed at.
+video:
+  width: 1920
+  height: 1080
+  fps: 30
+
+  # How a thumbnail that isn't already 16:9 is fitted to the frame:
+  #   blur  blurred copy of the art fills the frame behind it (default)
+  #   pad   centred on a black frame, nothing cropped
+  #   crop  scaled to cover, overhang trimmed
+  fit: blur
+
+  # x264 quality and speed. Lower crf = better and bigger (18 is near-lossless
+  # for a still image); slower presets compress better at the same quality.
+  crf: 18
+  preset: medium
+  audio_bitrate: 192k

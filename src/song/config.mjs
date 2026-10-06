@@ -75,6 +75,7 @@ export function loadConfig(configPathOverride) {
     const apiRaw = data.api ?? {};
     const humanRaw = renderRaw.humanize ?? data.humanize ?? {};
     const loudRaw = renderRaw.loudness ?? {};
+    const videoRaw = data.video ?? {};
 
     const writerModel = lyricsRaw.writer_model ?? 'openai/gpt-5.6-luna';
     const plannerModel = lyricsRaw.planner_model ?? writerModel;
@@ -166,6 +167,15 @@ export function loadConfig(configPathOverride) {
                     ?? 0
                 ),
             },
+        },
+        video: {
+            width: Number(videoRaw.width ?? 1920),
+            height: Number(videoRaw.height ?? 1080),
+            fps: Number(videoRaw.fps ?? 30),
+            fit: String(videoRaw.fit ?? 'blur').toLowerCase(),
+            crf: Number(videoRaw.crf ?? 18),
+            preset: String(videoRaw.preset ?? 'medium'),
+            audioBitrate: String(videoRaw.audio_bitrate ?? '192k'),
         },
         apiKey,
     };

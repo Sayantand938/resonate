@@ -39,7 +39,13 @@ export function makeProgress() {
             process.stderr.write(`${chalk.green(OK_TAG)}${extra}\n`);
         } else if (phase === 'skip') {
             const reason = result?.reason ?? 'skipped';
-            process.stderr.write(`${chalk.dim(SKIP_TAG)} (${reason})\n`);
+            // A warned skip is actionable (e.g. no thumbnail to build a video
+            // from), so it is coloured rather than dimmed like a routine one.
+            if (result?.warn) {
+                process.stderr.write(`${chalk.yellow(SKIP_TAG)} ${chalk.yellow(`(${reason})`)}\n`);
+            } else {
+                process.stderr.write(`${chalk.dim(SKIP_TAG)} (${reason})\n`);
+            }
         } else if (phase === 'fail') {
             const firstLine = result?.error
                 ? result.error.split('\n')[0]
@@ -90,7 +96,11 @@ export function printGroupedProgress(events) {
                 console.log(`${indent}${tag}  ${chalk.green(OK_TAG)}${extra}`);
             } else if (e.phase === 'skip') {
                 const reason = e.result?.reason ?? 'skipped';
-                console.log(`${indent}${tag}  ${chalk.dim(SKIP_TAG)} (${reason})`);
+                if (e.result?.warn) {
+                    console.log(`${indent}${tag}  ${chalk.yellow(SKIP_TAG)} ${chalk.yellow(`(${reason})`)}`);
+                } else {
+                    console.log(`${indent}${tag}  ${chalk.dim(SKIP_TAG)} (${reason})`);
+                }
             } else if (e.phase === 'fail') {
                 const firstLine = e.result?.error
                     ? e.result.error.split('\n')[0]

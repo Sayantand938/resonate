@@ -14,6 +14,12 @@ import { parseSongMarkdown } from './lyrics/parser.mjs';
 import { renderWithAbcjs } from '../abc/engine.mjs';
 import { humanizeMidiBuffer } from '../midi/humanize.mjs';
 import { renderWithBackend } from '../audio/backends.mjs';
+import {
+    generateVideo,
+    findThumbnail,
+    THUMBNAIL_NAMES,
+    VIDEO_FILENAME,
+} from '../video/generator.mjs';
 
 // =====================================================================
 // plan
@@ -161,6 +167,45 @@ export async function runRender(config, songFolder, { keep = false } = {}) {
     });
 
     return { wavPath: result.wavPath, midiPath };
+}
+
+// =====================================================================
+// video  (song.wav + thumbnail -> song.mp4)
+// =====================================================================
+
+export async function runVideo(config, songFolder) {
+    const wavPath = path.join(songFolder, 'song.wav');
+    if (!fs.existsSync(wavPath)) {
+        throw new Error(`Missing song.wav in ${songFolder}`);
+    }
+
+    const imagePath = findThumbnail(songFolder);
+    if (!imagePath) {
+        throw new Error(
+            'Thumbnail file not present — expected one of: '
+            + THUMBNAIL_NAMES.join(', ')
+        );
+    }
+
+    const outPath = path.join(songFolder, VIDEO_FILENAME);
+    const v = config.video ?? {};
+
+    await generateVideo({
+        wavPath,
+        imagePath,
+        outPath,
+        width: v.width,
+        height: v.height,
+        fps: v.fps,
+        fit: v.fit,
+        crf: v.crf,
+        preset: v.preset,
+        audioBitrate: v.audioBitrate,
+        // Stages run silently on success; the CLI wrappers report instead.
+        silent: true,
+    });
+
+    return { outPath, wavPath, imagePath };
 }
 
 // =====================================================================

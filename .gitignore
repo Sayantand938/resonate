@@ -101,9 +101,11 @@ config.local.yaml
 #   score.meta.json     YuE2 generation info (seed, request, timing)
 #   score.mid           clean abcjs MIDI
 #   score.human.mid     humanized MIDI (what gets rendered to WAV)
+#   thumbnail.*         cover art for the video (yours — supplied by hand)
 
 # Ignored — regenerable from the sources above:
 songs/**/song.wav
+songs/**/song.mp4
 songs/**/.score.loud.mid
 songs/**/score.mscz
 songs/**/.musescore-*.json
