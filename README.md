@@ -62,7 +62,7 @@ resume by running the same command again.
 ### Repository
 
 ```
-bin/cli.mjs           CLI entry point
+bin/cli.js            CLI entry point
 config.yaml           portable defaults            (tracked)
 config.local.yaml     machine-specific overrides    (gitignored)
 

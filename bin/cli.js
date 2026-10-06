@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-// bin/cli.mjs — the resonate CLI entry point.
+// bin/cli.js — the resonate CLI entry point.
+//
+// Kept as .js deliberately. Under "type": "module" a .js file is already ESM,
+// so there is nothing to disambiguate, and this is the path every existing
+// global install of `resonate` shims to — renaming it silently breaks them.
 //
 // Registers every command and dispatches. Each command lives in its own
 // module under src/cli/commands/.
@@ -43,8 +47,14 @@ registerShow(program);
 registerMeta(program);
 registerDev(program);
 
-// No arguments → print help.
-program.action(() => {
+// No arguments → print help. A mistyped command should not silently succeed.
+program.action((_options, command) => {
+    const unknown = command.args ?? [];
+    if (unknown.length > 0) {
+        console.error(`Unknown command: ${unknown.join(' ')}`);
+        console.error('');
+        program.help({ error: true });
+    }
     program.help();
 });
 

@@ -4,7 +4,7 @@
   "description": "Generate songs end-to-end: theme → lyrics → ABC → MIDI → production-ready WAV",
   "type": "module",
   "bin": {
-    "resonate": "./bin/cli.mjs"
+    "resonate": "./bin/cli.js"
   },
   "files": [
     "bin/",
@@ -15,7 +15,7 @@
     "README.md"
   ],
   "scripts": {
-    "list": "node bin/cli.mjs list",
+    "list": "node bin/cli.js list",
     "install-soundfont": "powershell -ExecutionPolicy Bypass -File scripts/install-soundfont.ps1"
   },
   "keywords": [
