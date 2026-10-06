@@ -70,6 +70,7 @@ export function loadConfig(configPathOverride) {
 
     const lyricsRaw = data.lyrics ?? {};
     const scoreRaw = data.score ?? {};
+    const transcribeRaw = data.transcribe ?? {};
     const renderRaw = data.render ?? {};
     const pathsRaw = data.paths ?? {};
     const apiRaw = data.api ?? {};
@@ -112,6 +113,14 @@ export function loadConfig(configPathOverride) {
             seedMode: String(scoreRaw.seed_mode ?? 'fixed').toLowerCase(),
             numInferenceSteps: Number(scoreRaw.num_inference_steps ?? 32),
             timeoutSeconds: Number(scoreRaw.timeout_seconds ?? 600),
+        },
+        transcribe: {
+            provider: transcribeRaw.provider ?? 'sheetsage2',
+            baseUrl: transcribeRaw.base_url ?? 'http://127.0.0.1:8081',
+            endpoint: transcribeRaw.endpoint ?? '/v1/tasks/run',
+            model: transcribeRaw.model ?? 'sheetsage2',
+            sampleRate: transcribeRaw.sample_rate ?? null,
+            timeoutSeconds: Number(transcribeRaw.timeout_seconds ?? 1800),
         },
         render: {
             soundfont: renderRaw.soundfont ?? null,

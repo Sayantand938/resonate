@@ -10,6 +10,11 @@ import path from 'node:path';
 import { Planner } from './lyrics/planner.mjs';
 import { SongWriter } from './lyrics/writer.mjs';
 import { SongScorer } from './score/generator.mjs';
+import {
+    SheetSageClient,
+    findSourceAudio,
+    SOURCE_NAMES,
+} from './score/sheetsage-client.mjs';
 import { parseSongMarkdown } from './lyrics/parser.mjs';
 import { renderWithAbcjs } from '../abc/engine.mjs';
 import { humanizeMidiBuffer } from '../midi/humanize.mjs';
@@ -46,6 +51,41 @@ export async function runWrite(config, plan) {
 export async function runScore(config, songFolder) {
     const scorer = new SongScorer(config);
     return scorer.score(songFolder);
+}
+
+// =====================================================================
+// transcribe  (og_song.* -> score.abc via SheetSage2)
+//
+// The mirror of the score stage: instead of inventing a score from lyrics,
+// it listens to an existing recording. Same output artifact, so midi/render/
+// video are unchanged.
+// =====================================================================
+
+export async function runTranscribe(config, songFolder) {
+    const sourcePath = findSourceAudio(songFolder);
+    if (!sourcePath) {
+        throw new Error(
+            `No source recording in ${songFolder} — expected one of: `
+            + SOURCE_NAMES.join(', ')
+        );
+    }
+
+    const client = new SheetSageClient(config);
+    const { abc, meta } = await client.transcribe(sourcePath);
+
+    const abcPath = path.join(songFolder, 'score.abc');
+    fs.writeFileSync(abcPath, abc, 'utf8');
+
+    const metaPath = path.join(songFolder, 'score.meta.json');
+    fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf8');
+
+    return {
+        abcPath,
+        metaPath,
+        sourcePath,
+        provider: meta.provider,
+        elapsedMs: meta.elapsed_ms,
+    };
 }
 
 // =====================================================================

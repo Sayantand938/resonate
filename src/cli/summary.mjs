@@ -7,6 +7,7 @@ import chalk from 'chalk';
 const STAGE_LABELS = {
     lyrics: 'songs written',
     score: 'songs scored',
+    transcribe: 'songs transcribed',
     midi: 'songs rendered to MIDI',
     render: 'songs rendered to WAV',
     video: 'songs rendered to video',

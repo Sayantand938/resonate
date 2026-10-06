@@ -30,6 +30,28 @@ score:
   seed_mode: random
   seed: 1234
 
+# Transcription: `resonate transcribe` turns an existing recording
+# (og_song.wav / .mp3 / .m4a / .flac / .ogg in the song folder) into
+# score.abc — the same artifact the score stage produces, so midi, render
+# and video are unchanged. Any source is re-encoded through ffmpeg first,
+# which also repairs downloaded WAVs whose RIFF sizes are 0xFFFFFFFF.
+#
+# NOTE the different port. SheetSage2 must run in its own server process
+# with "backend": "cpu": audio.cpp ignores the per-model "backend" key, so
+# a server with a global vulkan backend fails with "encoder backend buffer
+# allocation failed" on AMD hardware. See server-sheetsage.json.
+transcribe:
+  provider: sheetsage2
+  base_url: http://127.0.0.1:8081
+  endpoint: /v1/tasks/run
+  model: sheetsage2
+
+  # null keeps the source sample rate; set e.g. 48000 to force one.
+  sample_rate: null
+
+  # A 3:37 track took ~3 minutes on CPU. Generous by default.
+  timeout_seconds: 1800
+
 render:
   soundfont: null
   sample_rate: 44100

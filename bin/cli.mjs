@@ -11,6 +11,7 @@ const { version } = createRequire(import.meta.url)('../package.json');
 
 import { registerLyrics } from '../src/cli/commands/lyrics.mjs';
 import { registerScore } from '../src/cli/commands/score.mjs';
+import { registerTranscribe } from '../src/cli/commands/transcribe.mjs';
 import { registerMidi } from '../src/cli/commands/midi.mjs';
 import { registerRender } from '../src/cli/commands/render.mjs';
 import { registerVideo } from '../src/cli/commands/video.mjs';
@@ -31,6 +32,7 @@ program
 // Register every command.
 registerLyrics(program);
 registerScore(program);
+registerTranscribe(program);
 registerMidi(program);
 registerRender(program);
 registerVideo(program);

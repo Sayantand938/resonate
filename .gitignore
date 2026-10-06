@@ -107,6 +107,12 @@ config.local.yaml
 songs/**/song.wav
 songs/**/song.mp4
 songs/**/.score.loud.mid
+
+# The recording a song was transcribed from (`resonate transcribe`). It is
+# third-party audio: large, not yours to redistribute, and only needed if you
+# want to re-run the transcription. score.abc and score.meta.json — the parts
+# you actually authored by running the pipeline — stay tracked.
+songs/**/og_song.*
 songs/**/score.mscz
 songs/**/.musescore-*.json
 songs/**/convert.json

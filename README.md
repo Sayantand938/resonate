@@ -37,6 +37,9 @@ resonate render             # all songs that need it
 resonate video              # all songs that have a thumbnail
 resonate all                # score → midi → render
 
+# Or transcribe an existing recording instead of generating a score
+resonate transcribe songs\2023-10-06-ekta-chele
+
 # One song only
 resonate score  songs\2026-10-05-neon-on-the-window
 resonate all    songs\2026-10-05-neon-on-the-window
@@ -68,7 +71,7 @@ src/
     commands/         one module per `resonate` subcommand
   song/               pipeline orchestration
     lyrics/           planner, writer, parser, prompts/
-    score/            YuE2 client + ABC generator
+    score/            YuE2 client, ABC generator, SheetSage2 transcriber
   abc/engine.mjs      ABC → MIDI via abcjs
   midi/               byte-level MIDI transforms
     events.mjs        MIDI → absolute-tick event lists (the one parser)
@@ -81,6 +84,7 @@ src/
   audio/              MIDI → WAV backends
     backends.mjs      backend registry + the shared loudness step
     loudness.mjs      LUFS measurement and normalization
+    prepare.mjs       any audio → clean PCM WAV (for transcription)
     fluidsynth.mjs    FluidSynth + ffmpeg (portable default)
     vst3.mjs          VST3 instruments (Python + Pedalboard)
     render_vst_multi.py
@@ -107,6 +111,7 @@ by the registry afterwards, so a backend cannot skip it.
 songs/<date>-<slug>/
 ├── plan.json     creative plan       (source)
 ├── song.md       lyrics + style      (source)
+├── og_song.mp3   source recording    (source, optional — for transcribe)
 ├── score.abc     ABC notation        (source)
 ├── thumbnail.png cover art           (source, optional — needed for video)
 ├── score.mid     MIDI                (regenerable)
@@ -133,6 +138,37 @@ render:
 
 Plain objects merge key by key; arrays and scalars replace wholesale, so
 redefining `vst3_routing` takes effect as a whole rather than appending.
+
+## Transcription
+
+`resonate transcribe` produces `score.abc` from an existing recording instead
+of generating one from lyrics. It is the mirror of the score stage — same
+output artifact, so `midi`, `render` and `video` are unchanged:
+
+```powershell
+resonate transcribe songs\2023-10-06-ekta-chele
+resonate transcribe --force          # overwrite an existing score.abc
+```
+
+Drop the recording into the song folder as `og_song.wav`, `.mp3`, `.m4a`,
+`.flac` or `.ogg`. It is re-encoded through ffmpeg before being sent, which
+handles compressed sources and also repairs downloaded WAVs whose RIFF sizes
+are the `0xFFFFFFFF` "unknown/streamed" placeholder — those read fine in
+ffmpeg and ffprobe but make stricter parsers try to read 4 GB.
+
+SheetSage2 writes a **lead sheet**: melody, counter-melody, and chord
+symbols. That is exactly the input shape this pipeline already consumes, so
+abcjs generates the accompaniment from the transcribed chords, and song
+structure comes through as `% intro` / `% verse` / `% chorus` comments.
+
+⚠️ **SheetSage2 must run in its own server process with `backend: cpu`.**
+audio.cpp ignores the per-model `backend` key, so a server with a global
+Vulkan backend fails with `encoder backend buffer allocation failed` on AMD
+hardware. Because of that it cannot share a process with YuE2, and
+`transcribe.base_url` therefore defaults to `http://127.0.0.1:8081` while
+`score.base_url` stays on `8080`. The launcher's **Run all** starts both.
+
+On CPU it runs at roughly 0.8x realtime — a 3:37 track takes about 3 minutes.
 
 ## MIDI engine
 

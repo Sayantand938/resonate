@@ -43,6 +43,15 @@ export function registerRecreate(program) {
                     continue;
                 }
 
+                // Transcribed songs have no seed to re-issue -- they are not a
+                // sampled generation, so recreating means re-listening.
+                if (meta.provider && meta.provider !== 'yue2') {
+                    console.log(`${chalk.bold(name)}`);
+                    console.log(`  score   ${chalk.dim('[--]')} (${meta.provider}; use \`resonate transcribe --force\`)`);
+                    skipCount++;
+                    continue;
+                }
+
                 if (meta.seed == null) {
                     console.log(`${chalk.bold(name)}`);
                     console.log(`  score   ${chalk.red('[!!]')}  no seed in metadata`);

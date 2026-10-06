@@ -62,9 +62,17 @@ export function registerShow(program) {
                     const requested = meta.requested_at
                         ? new Date(meta.requested_at).toLocaleString()
                         : '?';
-                    console.log(`  score.meta    ${chalk.green('[OK]')}  seed=${meta.seed}`);
-                    console.log(`                       model=${meta.model ?? '?'}`);
-                    console.log(`                       elapsed=${(meta.elapsed_ms / 1000).toFixed(1)}s  requested=${requested}`);
+                    // YuE2 records the seed it sampled; SheetSage2 records the
+                    // recording it listened to.
+                    const detail = meta.seed != null
+                        ? `seed=${meta.seed}`
+                        : `source=${meta.source ?? '?'}`;
+                    const elapsed = meta.elapsed_ms != null
+                        ? `${(meta.elapsed_ms / 1000).toFixed(1)}s`
+                        : '?';
+                    console.log(`  score.meta    ${chalk.green('[OK]')}  ${detail}`);
+                    console.log(`                       provider=${meta.provider ?? 'yue2'}  model=${meta.model ?? '?'}`);
+                    console.log(`                       elapsed=${elapsed}  requested=${requested}`);
                 } else {
                     console.log(`  score.meta    ${chalk.dim('[--]')}`);
                 }

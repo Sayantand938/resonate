@@ -18,9 +18,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { findSongFolders } from './paths.mjs';
 import {
-    runPlan, runWrite, runScore, runMidi, runRender, runVideo,
+    runPlan, runWrite, runScore, runMidi, runRender, runVideo, runTranscribe,
 } from './stages.mjs';
 import { findThumbnail, VIDEO_FILENAME } from '../video/generator.mjs';
+import { findSourceAudio, SOURCE_NAMES } from './score/sheetsage-client.mjs';
 
 // =====================================================================
 // helpers
@@ -128,6 +129,58 @@ export async function stageScore(config, {
             if (progress) progress({ phase: 'done', folder: f, result: r });
         } catch (err) {
             const r = resultFail(f, err.message, 'score');
+            results.push(r);
+            if (progress) progress({ phase: 'fail', folder: f, result: r });
+        }
+    }
+
+    return results;
+}
+
+// =====================================================================
+// transcribe — og_song.* → score.abc + score.meta.json (SheetSage2)
+// =====================================================================
+
+export async function stageTranscribe(config, {
+    folder = null,
+    force = false,
+    onProgress,
+} = {}) {
+    const folders = listTargetFolders(config, folder);
+    const results = [];
+    const progress = taggedProgress(onProgress, 'transcribe');
+
+    for (const f of folders) {
+        const name = path.basename(f);
+        const sourcePath = findSourceAudio(f);
+        const abcPath = path.join(f, 'score.abc');
+
+        if (!sourcePath) {
+            const r = resultSkip(f, `no ${SOURCE_NAMES[0]} etc.`, 'transcribe');
+            results.push(r);
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
+            continue;
+        }
+        if (fs.existsSync(abcPath) && !force) {
+            const r = resultSkip(f, 'score.abc exists', 'transcribe');
+            results.push(r);
+            if (progress) progress({ phase: 'skip', folder: f, result: r });
+            continue;
+        }
+
+        if (progress) progress({ phase: 'start', folder: f, label: name });
+        try {
+            const out = await runTranscribe(config, f);
+            const r = resultOk(f, {
+                stage: 'transcribe',
+                outputPath: out.abcPath,
+                source: path.basename(out.sourcePath),
+                elapsedMs: out.elapsedMs,
+            });
+            results.push(r);
+            if (progress) progress({ phase: 'done', folder: f, result: r });
+        } catch (err) {
+            const r = resultFail(f, err.message, 'transcribe');
             results.push(r);
             if (progress) progress({ phase: 'fail', folder: f, result: r });
         }
