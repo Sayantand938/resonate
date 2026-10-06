@@ -6,8 +6,9 @@
 // contract. With a fixed non-zero seed the result is reproducible, so any
 // change to the loop structure below changes every rendered song.
 
-import { isMidi, headerLength, trackChunks, encodeTrackChunk } from './chunks.mjs';
-import { readVarLen, encodeVarLen } from './varlen.mjs';
+import { isMidi, headerLength, encodeTrackChunk } from './chunks.mjs';
+import { encodeVarLen } from './varlen.mjs';
+import { parseMidiEvents } from './events.mjs';
 
 /**
  * Deterministic PRNG (mulberry32) when seeded, `Math.random` when not.
@@ -58,69 +59,12 @@ export function humanizeMidiBuffer(inputBuffer, {
     const maxTimingTicks = msToTicks(timingMs);
     const rollTicks = msToTicks(rollMs);
 
-    const chunks = trackChunks(buf);
-    if (chunks.length === 0) {
-        throw new Error('No MTrk chunks found.');
-    }
-
     const rng = makeRng(seed);
 
-    const parsed = chunks.map((t) => {
-        const events = [];
-        let p = t.dataStart;
-        let absTick = 0;
-        let runningStatus = null;
-
-        while (p < t.dataEnd) {
-            const d = readVarLen(buf, p);
-            p = d.next;
-            absTick += d.value;
-
-            const start = p;
-            const status = buf[p];
-
-            if (status === 0xFF) {
-                const lenByte = buf[p + 2];
-                p += 3 + lenByte;
-                events.push({ absTick, kind: 'meta', bytes: buf.subarray(start, p) });
-            } else if (status === 0xF0 || status === 0xF7) {
-                const lenByte = buf[p + 1];
-                p += 2 + lenByte;
-                events.push({ absTick, kind: 'sysex', bytes: buf.subarray(start, p) });
-            } else {
-                let typeByte;
-                if (status < 0x80) {
-                    if (runningStatus == null) break;
-                    typeByte = runningStatus;
-                } else {
-                    typeByte = status;
-                    runningStatus = status;
-                    p++;
-                }
-                const type = typeByte & 0xF0;
-                const channel = typeByte & 0x0F;
-
-                if (type === 0x90 || type === 0x80) {
-                    const note = buf[p];
-                    const vel = buf[p + 1];
-                    p += 2;
-                    const isNoteOn = type === 0x90 && vel > 0;
-                    events.push({
-                        absTick,
-                        kind: isNoteOn ? 'noteOn' : 'noteOff',
-                        channel, note, velocity: vel, statusByte: typeByte,
-                    });
-                } else if (type === 0xC0 || type === 0xD0) {
-                    p += 1;
-                    events.push({ absTick, kind: 'channelShort', channel, statusByte: typeByte, data: buf.subarray(p - 1, p) });
-                } else {
-                    p += 2;
-                    events.push({ absTick, kind: 'channelShort', channel, statusByte: typeByte, data: buf.subarray(p - 2, p) });
-                }
-            }
-        }
-        return events;
-    });
+    // Shared walker (src/midi/events.mjs) — see the note at the top of this
+    // file: the RNG is consumed in track/event order, so the parse order is
+    // part of the output contract.
+    const { tracks: parsed } = parseMidiEvents(buf);
 
     for (let ti = 0; ti < parsed.length; ti++) {
         if (ti === 0) continue;

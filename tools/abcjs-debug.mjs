@@ -1,274 +1,126 @@
 #!/usr/bin/env node
-// tools/abcjs-debug.mjs — render an ABC file to MIDI with abcjs, with
-// full debug output at every step.
+// tools/abcjs-debug.mjs — render ABC with abcjs and show every step.
+//
+// This is the escape hatch for when you suspect our own post-processing
+// (title/composer metadata, channel remap, program injection) rather than
+// abcjs itself: it renders the ABC and reports what abcjs produced *before*
+// any of that, then writes that raw MIDI out.
 //
 // Usage:
 //   node tools/abcjs-debug.mjs <in.abc> <out.mid>
-//
-// Does NOT touch the pipeline. Standalone. Prints verbose diagnostics:
-//   - source file info (bytes, lines, first 40 lines dumped)
-//   - ABC summary parsed from the source (X, T, M, L, Q, K, V lines)
-//   - abcjs render call
-//   - raw HTML output from getMidiFile
-//   - decoded MIDI buffer size + first 32 bytes hex
-//   - MIDI header summary (format, tracks, division)
-//   - per-track event counts
-//   - writes the MIDI to out.mid
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { abcjsMidiHtml, midiFromAbcjsHtml } from '../src/abc/engine.mjs';
+import {
+    parseMidiEvents,
+    readHeader,
+    metaText,
+} from '../src/midi/events.mjs';
+import { parseArgs, die, requireInOut } from '../src/cli/args.mjs';
 
-if (typeof globalThis.window === 'undefined') {
-    globalThis.window = globalThis;
-}
+const USAGE = 'node tools/abcjs-debug.mjs <in.abc> <out.mid>';
 
-const [, , inPath, outPath] = process.argv;
-if (!inPath || !outPath) {
-    console.error('Usage: node tools/abcjs-debug.mjs <in.abc> <out.mid>');
-    process.exit(1);
-}
-if (!fs.existsSync(inPath)) {
-    console.error(`ABC not found: ${inPath}`);
-    process.exit(1);
-}
+const args = parseArgs(process.argv.slice(2));
+const { inPath, outPath } = requireInOut(args.positional, USAGE);
 
-// ---------------------------------------------------------------------
-// Step 1: read the source
-// ---------------------------------------------------------------------
+if (!fs.existsSync(inPath)) die(`ABC file not found: ${inPath}`);
 
 const source = fs.readFileSync(inPath, 'utf8');
-console.log('=== SOURCE ===');
-console.log(`  path:       ${inPath}`);
-console.log(`  bytes:      ${Buffer.byteLength(source, 'utf8')}`);
-console.log(`  lines:      ${source.split(/\r?\n/).length}`);
-console.log('');
-
-// ---------------------------------------------------------------------
-// Step 2: parse header fields and voice declarations
-// ---------------------------------------------------------------------
-
 const lines = source.split(/\r?\n/);
-console.log('=== ABC HEADER FIELDS ===');
+
+// ---- source ----------------------------------------------------------
+
+console.log('=== SOURCE ===');
+console.log(`  path        ${inPath}`);
+console.log(`  bytes       ${Buffer.byteLength(source, 'utf8')}`);
+console.log(`  lines       ${lines.length}`);
+
+console.log('\n=== ABC HEADER FIELDS ===');
 for (const line of lines) {
     const m = line.match(/^([A-Za-z]):\s*(.*)$/);
     if (!m) continue;
-    const field = m[1];
-    if ('XTM LQKV'.replace(' ', '').includes(field)) {
-        console.log(`  ${field}: ${m[2]}`);
-    }
+    if ('XTMLQKV'.includes(m[1])) console.log(`  ${m[1]}: ${m[2]}`);
 }
-console.log('');
 
-console.log('=== VOICE DECLARATIONS (in order) ===');
+console.log('\n=== VOICE DECLARATIONS (order of first appearance) ===');
 const voices = [];
-for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^V:\s*([^\s]+)(.*)$/);
-    if (!m) continue;
-    const name = m[1];
-    const attrs = m[2].trim();
-    if (!voices.some((v) => v.name === name)) {
-        voices.push({ name, attrs, firstLine: i + 1 });
-    }
-}
-for (const v of voices) {
-    console.log(`  line ${String(v.firstLine).padStart(4)}: V: ${v.name}   ${v.attrs}`);
-}
-console.log(`  → total distinct voices: ${voices.length}`);
-console.log('');
-
-// ---------------------------------------------------------------------
-// Step 3: dump the first 40 lines for reference
-// ---------------------------------------------------------------------
-
-console.log('=== SOURCE (first 40 lines) ===');
-lines.slice(0, 40).forEach((l, i) => {
-    console.log(`  ${String(i + 1).padStart(3)} | ${l}`);
+lines.forEach((line, i) => {
+    const m = line.match(/^V:\s*([^\s]+)(.*)$/);
+    if (!m) return;
+    if (voices.some((v) => v.name === m[1])) return;
+    voices.push({ name: m[1], attrs: m[2].trim(), at: i + 1 });
 });
-console.log('');
-
-// ---------------------------------------------------------------------
-// Step 4: render with abcjs
-// ---------------------------------------------------------------------
-
-console.log('=== RENDERING WITH abcjs ===');
-const abcjs = (await import('abcjs')).default;
-if (typeof abcjs.synth?.getMidiFile !== 'function') {
-    console.error('abcjs.synth.getMidiFile is not available.');
-    process.exit(1);
+for (const v of voices) {
+    console.log(`  line ${String(v.at).padStart(4)}: V: ${v.name}   ${v.attrs}`);
 }
+console.log(`  -> ${voices.length} distinct voice(s)`);
 
+// ---- abcjs -----------------------------------------------------------
+
+console.log('\n=== abcjs getMidiFile ===');
 let htmlArray;
 try {
-    htmlArray = abcjs.synth.getMidiFile(source, {});
+    htmlArray = await abcjsMidiHtml(source, {});
 } catch (err) {
-    console.error(`abcjs threw: ${err.message}`);
-    process.exit(1);
+    die(`abcjs threw: ${err.message}`);
 }
-
-console.log(`  getMidiFile returned: ${Array.isArray(htmlArray) ? htmlArray.length : 'not-an-array'} item(s)`);
 if (!Array.isArray(htmlArray) || htmlArray.length === 0) {
-    console.error('abcjs returned no MIDI.');
-    process.exit(1);
+    die('abcjs returned no MIDI.');
+}
+console.log(`  returned ${htmlArray.length} item(s)`);
+
+console.log('\n=== RAW abcjs OUTPUT (first 300 chars) ===');
+console.log(`  ${String(htmlArray[0]).slice(0, 300)}`);
+
+let midiBuffer;
+try {
+    midiBuffer = midiFromAbcjsHtml(htmlArray[0]);
+} catch (err) {
+    die(err.message);
 }
 
-// ---------------------------------------------------------------------
-// Step 5: extract MIDI from the data URL
-// ---------------------------------------------------------------------
+console.log('\n=== DECODED MIDI ===');
+console.log(`  size        ${midiBuffer.length} bytes`);
+console.log(`  first 32    ${midiBuffer.subarray(0, 32).toString('hex').match(/.{2}/g).join(' ')}`);
 
-const html = htmlArray[0];
-console.log('');
-console.log('=== RAW abcjs OUTPUT (first 300 chars) ===');
-console.log(html.slice(0, 300));
-console.log('');
+// ---- structure -------------------------------------------------------
 
-const m = html.match(/href\s*=\s*"data:audio\/midi,([^"]*)"/i);
-if (!m) {
-    console.error('Could not find data:audio/midi URL in abcjs output.');
-    process.exit(1);
+let header;
+let tracks;
+try {
+    header = readHeader(midiBuffer);
+    ({ tracks } = parseMidiEvents(midiBuffer));
+} catch (err) {
+    die(`Decoded data is not usable MIDI: ${err.message}`);
 }
 
-function percentDecodeToBuffer(str) {
-    const bytes = [];
-    for (let i = 0; i < str.length; i++) {
-        const ch = str[i];
-        if (ch === '%' && i + 2 <= str.length) {
-            const hex = str.slice(i + 1, i + 3);
-            if (/^[0-9a-fA-F]{2}$/.test(hex)) {
-                bytes.push(parseInt(hex, 16));
-                i += 2;
-                continue;
-            }
-        }
-        bytes.push(ch.charCodeAt(0) & 0xff);
-    }
-    return Buffer.from(bytes);
-}
+console.log('\n=== MIDI HEADER ===');
+console.log(`  format      ${header.format}`);
+console.log(`  tracks      ${tracks.length} (header declares ${header.trackCount})`);
+console.log(`  division    ${header.division}`);
 
-const midiBuffer = percentDecodeToBuffer(m[1]);
+tracks.forEach((events, i) => {
+    const noteOns = events.filter((e) => e.kind === 'noteOn');
+    const progChanges = events.filter(
+        (e) => e.kind === 'channelShort' && (e.statusByte & 0xF0) === 0xC0
+    );
+    const channels = [...new Set(events.filter((e) => e.channel != null).map((e) => e.channel))]
+        .sort((x, y) => x - y);
+    const name = events.map(metaText).find((t) => t != null) ?? null;
 
-console.log('=== DECODED MIDI ===');
-console.log(`  size:       ${midiBuffer.length} bytes`);
-console.log(`  first 32:   ${midiBuffer.subarray(0, 32).toString('hex').match(/.{2}/g).join(' ')}`);
-console.log('');
+    console.log(`\n=== TRACK ${i} ===`);
+    console.log(`  name        ${JSON.stringify(name)}`);
+    console.log(`  events      ${events.length}`);
+    console.log(`  channels    ${channels.join(', ') || '(none)'}`);
+    console.log(`  note-ons    ${noteOns.length}`);
+    console.log(`  program ch. ${progChanges.length}`);
+});
 
-// ---------------------------------------------------------------------
-// Step 6: walk the MIDI and print track summaries
-// ---------------------------------------------------------------------
-
-if (midiBuffer.toString('ascii', 0, 4) !== 'MThd') {
-    console.error('Decoded data is not a MIDI file (missing MThd).');
-    process.exit(1);
-}
-
-const headerLen = midiBuffer.readUInt32BE(4);
-const format = midiBuffer.readUInt16BE(8);
-const nTracks = midiBuffer.readUInt16BE(10);
-const division = midiBuffer.readUInt16BE(12);
-
-console.log('=== MIDI HEADER ===');
-console.log(`  format:     ${format}`);
-console.log(`  tracks:     ${nTracks}`);
-console.log(`  division:   ${division}`);
-console.log('');
-
-let pos = 8 + headerLen;
-let trackNum = 0;
-const trackSummaries = [];
-
-while (pos + 8 <= midiBuffer.length) {
-    if (midiBuffer.toString('ascii', pos, pos + 4) !== 'MTrk') break;
-    const len = midiBuffer.readUInt32BE(pos + 4);
-    const dataStart = pos + 8;
-    const dataEnd = dataStart + len;
-
-    let p = dataStart;
-    let absTick = 0;
-    const stats = {
-        noteOns: 0,
-        noteOffs: 0,
-        programChanges: 0,
-        channels: new Set(),
-        name: null,
-        firstNoteTick: null,
-        lastNoteTick: 0,
-    };
-
-    while (p < dataEnd) {
-        let delta = 0, b;
-        do { b = midiBuffer[p++]; delta = (delta << 7) | (b & 0x7f); } while (b & 0x80);
-        absTick += delta;
-
-        const status = midiBuffer[p];
-
-        if (status === 0xFF) {
-            const type = midiBuffer[p + 1];
-            const metaLen = midiBuffer[p + 2];
-            if (type === 0x03) stats.name = midiBuffer.subarray(p + 3, p + 3 + metaLen).toString('utf8');
-            p += 3 + metaLen;
-            continue;
-        }
-        if (status === 0xF0 || status === 0xF7) {
-            const sysexLen = midiBuffer[p + 1];
-            p += 2 + sysexLen;
-            continue;
-        }
-
-        const type = status & 0xF0;
-        const ch = status & 0x0F;
-        stats.channels.add(ch);
-
-        if (type === 0x90) {
-            const vel = midiBuffer[p + 2];
-            if (vel > 0) {
-                stats.noteOns++;
-                stats.lastNoteTick = absTick;
-                if (stats.firstNoteTick == null) stats.firstNoteTick = absTick;
-            }
-            p += 3;
-        } else if (type === 0x80) {
-            stats.noteOffs++;
-            p += 3;
-        } else if (type === 0xC0) {
-            stats.programChanges++;
-            p += 2;
-        } else if (type === 0xB0 || type === 0xE0 || type === 0xA0) {
-            p += 3;
-        } else if (type === 0xD0) {
-            p += 2;
-        } else {
-            console.error(`  [warn] unknown status 0x${status.toString(16)} at byte ${p} in track ${trackNum}`);
-            break;
-        }
-    }
-
-    console.log(`=== TRACK ${trackNum} (${len} bytes) ===`);
-    console.log(`  name:        ${JSON.stringify(stats.name)}`);
-    console.log(`  channels:    ${[...stats.channels].sort((a, b) => a - b).join(', ') || '(none)'}`);
-    console.log(`  note-ons:    ${stats.noteOns}`);
-    console.log(`  note-offs:   ${stats.noteOffs}`);
-    console.log(`  progs:       ${stats.programChanges}`);
-    console.log(`  first tick:  ${stats.firstNoteTick ?? '—'}`);
-    console.log(`  last tick:   ${stats.lastNoteTick}`);
-    console.log('');
-
-    trackSummaries.push({
-        track: trackNum,
-        name: stats.name,
-        channels: [...stats.channels],
-        noteOns: stats.noteOns,
-        firstNoteTick: stats.firstNoteTick,
-        lastNoteTick: stats.lastNoteTick,
-    });
-
-    pos = dataEnd;
-    trackNum++;
-}
-
-// ---------------------------------------------------------------------
-// Step 7: write the MIDI
-// ---------------------------------------------------------------------
+// ---- write -----------------------------------------------------------
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, midiBuffer);
-console.log('=== OUTPUT ===');
+console.log(`\n=== OUTPUT ===`);
 console.log(`  wrote ${outPath} (${midiBuffer.length} bytes)`);
+console.log('  note: raw abcjs output — no title, channel remap or program injection.\n');

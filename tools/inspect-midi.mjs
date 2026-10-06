@@ -1,216 +1,166 @@
-// inspect-midi.mjs — deep inspection of a MIDI file.
-// Usage: node tools/inspect-midi.mjs <path-to.mid>
+#!/usr/bin/env node
+// tools/inspect-midi.mjs — structural report for a MIDI file.
+//
+// Replaces the three separate inspector scripts; they all walked the same
+// bytes and differed only in what they printed.
+//
+// Usage:
+//   node tools/inspect-midi.mjs <file.mid> [--collisions]
+//
+//   --collisions   also report the same pitch sounding on two tracks at the
+//                  same tick, which is the usual cause of a "doubled" part.
 
 import fs from 'node:fs';
+import {
+    parseMidiEvents,
+    readHeader,
+    metaText,
+    firstTempo,
+} from '../src/midi/events.mjs';
+import { parseArgs, die } from '../src/cli/args.mjs';
 
-const path = process.argv[2];
-if (!path) {
-    console.error('Usage: node tools/inspect-midi.mjs <path-to.mid>');
-    process.exit(1);
+const USAGE = 'node tools/inspect-midi.mjs <file.mid> [--collisions]';
+
+const args = parseArgs(process.argv.slice(2), {
+    '--collisions': { key: 'collisions', kind: 'flag' },
+});
+
+const [filePath] = args.positional;
+if (!filePath) die(null, USAGE);
+if (!fs.existsSync(filePath)) die(`MIDI not found: ${filePath}`);
+
+const PITCH = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const pitchName = (n) => `${PITCH[n % 12]}${Math.floor(n / 12) - 1}`;
+
+const buf = fs.readFileSync(filePath);
+
+let header;
+let tracks;
+try {
+    header = readHeader(buf);
+    ({ tracks } = parseMidiEvents(buf));
+} catch (err) {
+    die(err.message);
 }
 
-const buf = fs.readFileSync(path);
-
-// --- Header ---------------------------------------------------------
-console.log('=== HEADER ===');
-console.log('  magic:      ', buf.toString('ascii', 0, 4));
-const format = buf.readUInt16BE(8);
-const nTracks = buf.readUInt16BE(10);
-const division = buf.readUInt16BE(12);
-const headerLen = buf.readUInt32BE(4);
-console.log('  format:     ', format, '(0=single track, 1=multi-track)');
-console.log('  tracks:     ', nTracks);
-console.log('  division:   ', division, 'ticks/quarter');
-console.log('  file size:  ', buf.length, 'bytes');
-console.log('');
-
-// --- Walk tracks ----------------------------------------------------
-let pos = 8 + headerLen;
-let trackNum = 0;
-
-const trackInfo = [];
-
-while (pos + 8 <= buf.length) {
-    if (buf.toString('ascii', pos, pos + 4) !== 'MTrk') break;
-    const len = buf.readUInt32BE(pos + 4);
-    const start = pos + 8;
-    const end = start + len;
-
-    console.log(`=== TRACK ${trackNum} (${len} bytes) ===`);
-
-    const stats = {
-        notes: 0,
-        noteOns: 0,
-        noteOffs: 0,
-        programChanges: [],
-        channels: new Set(),
-        firstProgram: null,
-        name: null,
-        tempo: null,
-        timeSig: null,
-        keySig: null,
-        lastNoteTick: 0,
-        firstNoteTick: null,
+const stats = (nums) => {
+    if (nums.length === 0) return null;
+    const sum = nums.reduce((a, b) => a + b, 0);
+    return {
+        min: Math.min(...nums),
+        max: Math.max(...nums),
+        mean: sum / nums.length,
     };
+};
 
-    let p = start;
-    let absTick = 0;
+const fmt = (n, digits = 1) => (n == null ? '—' : n.toFixed(digits));
 
-    while (p < end) {
-        let delta = 0, b;
-        do { b = buf[p++]; delta = (delta << 7) | (b & 0x7f); } while (b & 0x80);
-        absTick += delta;
+// ---- header ----------------------------------------------------------
 
-        const status = buf[p];
+console.log(`\n=== HEADER ===  ${filePath}`);
+console.log(`  format      ${header.format} (${header.format === 0 ? 'single track' : 'multi-track'})`);
+console.log(`  tracks      ${tracks.length} (header declares ${header.trackCount})`);
+console.log(`  division    ${header.division} ticks/quarter`);
+console.log(`  size        ${buf.length.toLocaleString()} bytes`);
 
-        if (status === 0xFF) {
-            const type = buf[p + 1];
-            const metaLen = buf[p + 2];
-            const data = buf.subarray(p + 3, p + 3 + metaLen);
-            p += 3 + metaLen;
+// ---- tempo -----------------------------------------------------------
 
-            switch (type) {
-                case 0x03: stats.name = data.toString('utf8'); break;
-                case 0x51: {
-                    const us = data.readUIntBE(0, 3);
-                    stats.tempo = Math.round(60000000 / us);
-                    break;
-                }
-                case 0x58: stats.timeSig = `${data[0]}/${Math.pow(2, data[1])}`; break;
-                case 0x59: {
-                    const n = data[0] > 127 ? data[0] - 256 : data[0];
-                    stats.keySig = `${n} sharps/flats, ${data[1]} major/minor`;
-                    break;
-                }
-            }
-            continue;
-        }
+const { usPerQuarter: tempoUs, tick: tempoTick, explicit: tempoFound } = firstTempo(tracks);
+const secondsPerTick = (tempoUs / 1_000_000) / header.division;
+console.log('\n=== TEMPO ===');
+console.log(`  ${fmt(60_000_000 / tempoUs)} BPM  (${tempoUs} us/quarter) at tick ${tempoTick}`
+    + (tempoFound ? '' : '  [default — no set_tempo found]'));
 
-        if (status === 0xF0 || status === 0xF7) {
-            const sysexLen = buf[p + 1];
-            p += 2 + sysexLen;
-            continue;
-        }
+// ---- per track -------------------------------------------------------
 
-        const type = status & 0xF0;
-        const ch = status & 0x0F;
-        stats.channels.add(ch);
+console.log('\n=== TRACKS ===');
+console.log('  #   name                    events  note-ons  channels  tick range');
 
-        if (type === 0x90) {
-            const vel = buf[p + 2];
-            if (vel > 0) {
-                stats.noteOns++;
-                stats.lastNoteTick = absTick;
-                if (stats.firstNoteTick == null) stats.firstNoteTick = absTick;
-            }
-            stats.notes++;
-            p += 3;
-        } else if (type === 0x80) {
-            stats.noteOffs++;
-            p += 3;
-        } else if (type === 0xC0) {
-            const prog = buf[p + 1];
-            if (stats.firstProgram == null) {
-                stats.firstProgram = { ch, prog, tick: absTick };
-            }
-            stats.programChanges.push({ ch, prog, tick: absTick });
-            p += 2;
-        } else if (type === 0xB0 || type === 0xE0 || type === 0xA0) {
-            p += 3;
-        } else if (type === 0xD0) {
-            p += 2;
-        } else {
-            break;
-        }
+let totalNotes = 0;
+let lastTick = 0;
+
+tracks.forEach((events, i) => {
+    const noteOns = events.filter((e) => e.kind === 'noteOn');
+    const channels = [...new Set(events.filter((e) => e.channel != null).map((e) => e.channel))]
+        .sort((a, b) => a - b);
+    const name = events.map(metaText).find((t) => t != null) ?? '';
+    const end = events.length ? events[events.length - 1].absTick : 0;
+
+    totalNotes += noteOns.length;
+    lastTick = Math.max(lastTick, end);
+
+    const range = noteOns.length
+        ? `${noteOns[0].absTick}..${noteOns[noteOns.length - 1].absTick}`
+        : '—';
+
+    console.log(
+        `  ${String(i).padEnd(3)} ${(name ? `"${name}"` : '—').padEnd(23)}`
+        + `${String(events.length).padStart(6)}  ${String(noteOns.length).padStart(8)}`
+        + `  ${(channels.join(',') || '—').padEnd(8)}  ${range}`
+    );
+});
+
+// ---- per channel -----------------------------------------------------
+
+const byChannel = new Map();
+for (const events of tracks) {
+    for (const ev of events) {
+        if (ev.kind !== 'noteOn') continue;
+        if (!byChannel.has(ev.channel)) byChannel.set(ev.channel, []);
+        byChannel.get(ev.channel).push(ev);
     }
+}
 
-    const channelList = [...stats.channels].sort((a, b) => a - b);
-    console.log('  name:          ', JSON.stringify(stats.name));
-    console.log('  tempo (BPM):   ', stats.tempo);
-    console.log('  time sig:      ', stats.timeSig);
-    console.log('  key sig:       ', stats.keySig);
-    console.log('  channels used: ', channelList.join(', '));
-    console.log('  note-ons:      ', stats.noteOns);
-    console.log('  note-offs:     ', stats.noteOffs);
-    console.log('  first note tick:', stats.firstNoteTick ?? '—');
-    console.log('  last note tick:', stats.lastNoteTick);
-    if (stats.programChanges.length > 0) {
-        console.log('  program changes:');
-        for (const pc of stats.programChanges) {
-            console.log(`     tick ${String(pc.tick).padStart(6)}  ch ${pc.ch}  → program ${pc.prog}`);
-        }
-    } else {
-        console.log('  program changes: none');
+if (byChannel.size) {
+    console.log('\n=== CHANNELS (note-ons) ===');
+    console.log('  ch   notes   velocity           pitch range');
+    for (const ch of [...byChannel.keys()].sort((a, b) => a - b)) {
+        const notes = byChannel.get(ch);
+        const vel = stats(notes.map((n) => n.velocity));
+        const pitches = notes.map((n) => n.note);
+        console.log(
+            `  ${String(ch).padEnd(4)} ${String(notes.length).padStart(5)}`
+            + `   ${String(vel.min).padStart(3)}..${String(vel.max).padEnd(3)} (mean ${fmt(vel.mean)})`
+            + `   ${pitchName(Math.min(...pitches))}..${pitchName(Math.max(...pitches))}`
+        );
     }
-    console.log('');
+}
 
-    trackInfo.push({
-        track: trackNum,
-        channels: channelList,
-        firstNoteTick: stats.firstNoteTick,
-        lastNoteTick: stats.lastNoteTick,
-        noteOns: stats.noteOns,
+const durationS = lastTick * secondsPerTick;
+const mm = Math.floor(durationS / 60);
+const ss = (durationS % 60).toFixed(1).padStart(4, '0');
+console.log('\n=== TOTAL ===');
+console.log(`  ${totalNotes} note-ons across ${tracks.length} tracks, ${lastTick} ticks, ${mm}:${ss}`);
+
+// ---- collisions (opt-in) --------------------------------------------
+
+if (args.collisions) {
+    const seen = new Map();
+    let collisions = 0;
+    const examples = [];
+
+    tracks.forEach((events, trackIndex) => {
+        for (const ev of events) {
+            if (ev.kind !== 'noteOn') continue;
+            const key = `${ev.absTick}:${ev.channel}:${ev.note}`;
+            const prior = seen.get(key);
+            if (prior != null && prior !== trackIndex) {
+                collisions++;
+                if (examples.length < 10) {
+                    examples.push(`    tick ${ev.absTick}  ch${ev.channel} ${pitchName(ev.note)}  tracks ${prior}+${trackIndex}`);
+                }
+            } else if (prior == null) {
+                seen.set(key, trackIndex);
+            }
+        }
     });
 
-    pos = end;
-    trackNum++;
-}
-
-// --- Summary --------------------------------------------------------
-console.log('=== SUMMARY ===');
-console.log(`Scanned ${trackNum} track(s).`);
-
-// Split melodic tracks into "single-channel" (melody voices) and
-// "multi-channel" (abcjs's chord-following accompaniment). Only
-// single-channel tracks are compared for drift — accompaniment runs
-// on its own schedule and will always extend past the melody.
-const melodic = trackInfo.filter((t) => t.track > 0 && t.noteOns > 0);
-const single = melodic.filter((t) => t.channels.length === 1);
-const multi = melodic.filter((t) => t.channels.length > 1);
-
-const beats = (ticks) => ticks / division;
-
-if (single.length > 0) {
-    console.log('');
-    console.log('Melody voices (single channel):');
-    for (const t of single) {
-        const endBeats = beats(t.lastNoteTick).toFixed(2);
-        console.log(
-            `  #${t.track}  ch ${t.channels[0]}  ${t.noteOns} notes  ` +
-            `first ${t.firstNoteTick ?? '—'}  last ${t.lastNoteTick}  (${endBeats} beats)`
-        );
-    }
-
-    if (single.length > 1) {
-        const lastTicks = single.map((t) => t.lastNoteTick);
-        const firstTicks = single.map((t) => t.firstNoteTick ?? 0);
-
-        const lastDrift = Math.max(...lastTicks) - Math.min(...lastTicks);
-        const firstDrift = Math.max(...firstTicks) - Math.min(...firstTicks);
-
-        console.log('');
-        console.log(`  end drift:   ${lastDrift} ticks (${beats(lastDrift).toFixed(2)} beats)`);
-        console.log(`  start drift: ${firstDrift} ticks (${beats(firstDrift).toFixed(2)} beats)`);
-
-        if (beats(lastDrift) >= 1) {
-            console.log(`  ⚠  end drift ≥ 1 beat — melody voices have different total lengths.`);
-        }
+    console.log('\n=== COLLISIONS ===');
+    console.log(`  ${collisions} same-pitch/same-tick event(s) across different tracks`);
+    for (const e of examples) console.log(e);
+    if (collisions === 0) {
+        console.log('  Apparent doubling is octave doubling or chord tones, not duplicate pitches.');
     }
 }
 
-if (multi.length > 0) {
-    console.log('');
-    console.log('Accompaniment (multi-channel):');
-    for (const t of multi) {
-        const endBeats = beats(t.lastNoteTick).toFixed(2);
-        console.log(
-            `  #${t.track}  ch ${t.channels.join(',')}  ${t.noteOns} notes  ` +
-            `last ${t.lastNoteTick}  (${endBeats} beats)`
-        );
-    }
-}
-
-if (melodic.length === 0) {
-    console.log('');
-    console.log('No melodic tracks with note-ons found.');
-}
+console.log('');

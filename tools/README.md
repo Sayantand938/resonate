@@ -8,10 +8,12 @@ Run them with `node tools/<name>.mjs ...` from the repo root.
 
 | Tool | Answers |
 |------|---------|
-| `inspect-midi.mjs` | What is actually inside this MIDI file? Header, tracks, channels, note counts, tempo. |
-| `inspect-humanization.mjs` | Did the humanizer do what I asked? Per-channel timing and velocity distributions. |
-| `show-collisions.mjs` | Why does this sound doubled? Finds the same pitch playing on two tracks at the same tick. |
-| `abcjs-debug.mjs` | What did abcjs produce from this ABC, before our remap/program post-processing? |
+| `inspect-midi.mjs` | What is inside this MIDI? Header, tempo, per-track and per-channel note/velocity stats. Add `--collisions` to find the same pitch on two tracks at the same tick — the usual cause of a part sounding doubled. |
+| `diff-midi.mjs` | What changed between these two MIDIs? Per-channel timing and velocity deltas, plus how many chords the humanizer staggered. |
+| `abcjs-debug.mjs` | What did abcjs produce from this ABC, before our metadata, channel remap and program injection? |
+
+All three share the MIDI reader in `src/midi/events.mjs`, so there is only
+one byte-walking implementation to trust.
 
 ## Examples
 
@@ -19,17 +21,29 @@ Run them with `node tools/<name>.mjs ...` from the repo root.
 # Structure and contents of a rendered MIDI
 node tools/inspect-midi.mjs songs\2026-10-05-the-blue-sock-problem\score.mid
 
-# Compare the mechanical and humanized versions
-node tools/inspect-humanization.mjs songs\2026-10-05-the-blue-sock-problem\score.mid
-node tools/inspect-humanization.mjs songs\2026-10-05-the-blue-sock-problem\score.human.mid
-
 # Is the melody doubling the accompaniment?
-node tools/show-collisions.mjs songs\2026-10-05-the-blue-sock-problem\score.mid
+node tools/inspect-midi.mjs songs\2026-10-05-the-blue-sock-problem\score.mid --collisions
+
+# What did humanization actually do?
+node tools/diff-midi.mjs songs\2026-10-05-the-blue-sock-problem\score.mid `
+                        songs\2026-10-05-the-blue-sock-problem\score.human.mid
 
 # Raw abcjs output, bypassing src/midi/{meta,remap}.mjs
 node tools/abcjs-debug.mjs songs\2026-10-05-the-blue-sock-problem\score.abc .\raw.mid
 ```
 
-`abcjs-debug.mjs` is the escape hatch when you suspect our own post-processing
-(channel remap, program injection, title metadata) rather than abcjs itself:
-it renders the ABC and writes the MIDI with none of that applied.
+## Reading diff-midi output
+
+`diff-midi.mjs` matches note-ons positionally, which is valid because the
+humanizer shifts notes in time but never adds, removes or reorders them. If
+the two files are not a simple timing/velocity edit of each other it says so
+rather than reporting nonsense.
+
+Useful checks:
+
+* **timing changed ≈ 100%** with a peak near `humanize.timing_ms` — the
+  jitter is working.
+* **chord groups** should be non-zero and mostly staggered, otherwise the
+  chord roll is not firing. `score.abc` needs chord symbols for abcjs to
+  generate the accompaniment that the roll acts on.
+* **velocity changed** should be roughly the `humanize.velocity` setting.

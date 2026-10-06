@@ -68,6 +68,7 @@ src/
     score/            YuE2 client + ABC generator
   abc/engine.mjs      ABC → MIDI via abcjs
   midi/               byte-level MIDI transforms
+    events.mjs        MIDI → absolute-tick event lists (the one parser)
     chunks.mjs        MThd/MTrk structure helpers
     varlen.mjs        variable-length quantities
     meta.mjs          title/composer + program injection
@@ -75,7 +76,9 @@ src/
     humanize.mjs      timing + velocity jitter, chord roll
     normalize.mjs     velocity range normalization
   audio/              MIDI → WAV backends
-    fluidsynth.mjs    FluidSynth + ffmpeg (default)
+    backends.mjs      backend registry + the shared loudness step
+    loudness.mjs      LUFS measurement and normalization
+    fluidsynth.mjs    FluidSynth + ffmpeg (portable default)
     vst3.mjs          VST3 instruments (Python + Pedalboard)
     render_vst_multi.py
 
@@ -89,6 +92,10 @@ and file reporting, and `tools/` is imported by neither.** Each script under
 [stages.mjs](src/song/stages.mjs) call those same modules directly — so every
 step has exactly one implementation, whether you drive it from `resonate` or
 from `node scripts/midi2wav.mjs`.
+
+Render backends are entries in [backends.mjs](src/audio/backends.mjs) selected
+by `render.backend`. Each is a pure renderer: loudness normalization is applied
+by the registry afterwards, so a backend cannot skip it.
 
 ### Song folder
 

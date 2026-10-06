@@ -50,25 +50,14 @@ export async function renderWithAbcjs({
         throw new Error('abcjs.synth.getMidiFile is not available.');
     }
 
-    let source = fs.readFileSync(abcPath, 'utf8');
+    const source = fs.readFileSync(abcPath, 'utf8');
 
-    if (tempo != null) {
-        if (/^Q:/m.test(source)) {
-            source = source.replace(/^Q:.*$/m, `Q:1/4=${tempo}`);
-        } else {
-            source = source.replace(/^(X:[^\n]*\n)/m, `$1Q:1/4=${tempo}\n`);
-        }
-    }
-
-    const midiOptions = {};
-    if (Number.isInteger(program)) midiOptions.program = program;
-
-    const htmlArray = abcjs.synth.getMidiFile(source, midiOptions);
+    const htmlArray = await abcjsMidiHtml(source, { tempo, program });
     if (!Array.isArray(htmlArray) || htmlArray.length === 0) {
         throw new Error('abcjs did not return any MIDI.');
     }
 
-    let midiBuffer = extractMidiFromHtml(htmlArray[0]);
+    let midiBuffer = midiFromAbcjsHtml(htmlArray[0]);
     midiBuffer = injectTitleAndComposer(midiBuffer, { title, composer });
 
     // Derive the track → channel remap from the ABC source and the MIDI
@@ -189,7 +178,36 @@ function countMidiTracks(midiBuffer) {
     return midiBuffer.readUInt16BE(10);
 }
 
-function extractMidiFromHtml(html) {
+/**
+ * Run abcjs over ABC source and return its raw output entries.
+ *
+ * Exposed so tools/abcjs-debug.mjs can inspect what abcjs produced *before*
+ * the title/program/channel post-processing below.
+ *
+ * @param {string} abcSource
+ * @param {{tempo?:number, program?:number}} [opts]
+ * @returns {Promise<string[]>}
+ */
+export async function abcjsMidiHtml(abcSource, { tempo, program } = {}) {
+    const abcjs = await loadAbcjs();
+
+    let source = abcSource;
+    if (tempo != null) {
+        if (/^Q:/m.test(source)) {
+            source = source.replace(/^Q:.*$/m, `Q:1/4=${tempo}`);
+        } else {
+            source = source.replace(/^(X:[^\n]*\n)/m, `$1Q:1/4=${tempo}\n`);
+        }
+    }
+
+    const midiOptions = {};
+    if (Number.isInteger(program)) midiOptions.program = program;
+
+    return abcjs.synth.getMidiFile(source, midiOptions);
+}
+
+/** Decode one abcjs output entry into a MIDI buffer. */
+export function midiFromAbcjsHtml(html) {
     const m = html.match(/href\s*=\s*"data:audio\/midi,([^"]*)"/i);
     if (!m) throw new Error('Could not find MIDI data URL in abcjs output.');
     return percentDecodeToBuffer(m[1]);
