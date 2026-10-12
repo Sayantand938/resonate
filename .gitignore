@@ -105,6 +105,7 @@ config.local.yaml
 
 # Ignored — regenerable from the sources above:
 songs/**/song.wav
+songs/**/song.mp3
 songs/**/song.mp4
 songs/**/.score.loud.mid
 
