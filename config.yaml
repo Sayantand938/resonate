@@ -15,7 +15,11 @@ lyrics:
   max_tokens: 4000
 
   save_plan: true
-  date_prefix_filenames: true
+
+  # Song folders are named <slug>-<date> when this is true, so a directory
+  # listing sorts by title with same-title songs in chronological order.
+  # Set to false to use <slug> alone (collisions get a -2, -3, ... suffix).
+  date_in_folder: true
 
 score:
   provider: yue2

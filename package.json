@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "list": "node bin/cli.js list",
-    "test": "node --test src/**/*.test.mjs"
+    "test": "node --test src/**/*.test.mjs",
+    "rename-folders": "node scripts/rename-song-folders.mjs"
   },
   "keywords": [
     "music",

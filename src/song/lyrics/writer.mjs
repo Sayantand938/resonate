@@ -65,7 +65,7 @@ export class SongWriter {
         }
 
         const slug = slugify(parsed.title);
-        const baseName = songFolderName(slug, { datePrefix: lc.datePrefixFilenames });
+        const baseName = songFolderName(slug, { includeDate: lc.dateInFolder });
 
         let folder;
         if (existingFolder) {

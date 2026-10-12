@@ -25,11 +25,20 @@ export function slugify(text, maxLength = 80) {
     return s.slice(0, maxLength).replace(/-+$/, '');
 }
 
-export function songFolderName(slug, { datePrefix = true } = {}) {
-    if (!datePrefix) return slug;
+/**
+ * Folder name for a song. The date goes last so a directory listing
+ * sorted alphabetically groups songs by title, with same-title songs
+ * ordered chronologically.
+ *
+ *   songFolderName('neon-on-the-window')  →  'neon-on-the-window-2026-10-05'
+ *   songFolderName('neon-on-the-window', { includeDate: false })
+ *     →  'neon-on-the-window'
+ */
+export function songFolderName(slug, { includeDate = true } = {}) {
+    if (!includeDate) return slug;
     const d = new Date();
     const iso = d.toISOString().slice(0, 10);
-    return `${iso}-${slug}`;
+    return `${slug}-${iso}`;
 }
 
 export function log(msg) { console.error(msg); }

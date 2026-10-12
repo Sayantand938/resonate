@@ -98,7 +98,7 @@ export function loadConfig(configPathOverride) {
             writerTemperature: Number(lyricsRaw.writer_temperature ?? 0.9),
             maxTokens: Number(lyricsRaw.max_tokens ?? 4000),
             savePlan: Boolean(lyricsRaw.save_plan ?? true),
-            datePrefixFilenames: Boolean(lyricsRaw.date_prefix_filenames ?? true),
+            dateInFolder: Boolean(lyricsRaw.date_in_folder ?? true),
         },
         score: {
             provider: scoreRaw.provider ?? 'yue2',

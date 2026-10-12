@@ -37,6 +37,10 @@ resonate show
 Every stage skips work that's already done. Ctrl+C any time; run the same
 command again to resume.
 
+Song folders are named `<slug>-<date>` (e.g.
+`neon-on-the-window-2026-10-05`), so a directory listing sorts by title
+with same-title songs in chronological order.
+
 ---
 
 ## Commands
@@ -55,7 +59,7 @@ with `--n 1`; `--genre` and `--mood` apply to every song in the batch.
 ### Generating a score from an existing recording
 
 ```powershell
-resonate transcribe songs\2023-10-06-ekta-chele
+resonate transcribe songs\ekta-chele-2023-10-06
 resonate transcribe --force
 ```
 
@@ -72,7 +76,7 @@ resonate midi               # score.abc → score.mid + score.human.mid
 resonate render             # score.mid → song.wav
 resonate all                # score → midi → render
 
-resonate score  songs\2026-10-05-neon-on-the-window    # one song only
+resonate score  songs\neon-on-the-window-2026-10-05    # one song only
 resonate all    --force                                # redo everything
 ```
 
@@ -80,7 +84,7 @@ resonate all    --force                                # redo everything
 
 ```powershell
 resonate video                                  # songs that have a thumbnail
-resonate video songs\2026-10-05-neon-on-the-window
+resonate video songs\neon-on-the-window-2026-10-05
 resonate video --force
 ```
 
@@ -96,15 +100,15 @@ and a batch of warnings on every run is noise.
 ```powershell
 resonate list                                       # table of all songs
 resonate show                                       # detailed status
-resonate show songs\2026-10-05-neon-on-the-window
+resonate show songs\neon-on-the-window-2026-10-05
 resonate show --loudness                            # measure each song.wav (slow)
-resonate meta songs\2026-10-05-neon-on-the-window   # generation info
+resonate meta songs\neon-on-the-window-2026-10-05   # generation info
 ```
 
 ### Recreating a song
 
 ```powershell
-resonate recreate songs\2026-10-05-neon-on-the-window --force
+resonate recreate songs\neon-on-the-window-2026-10-05 --force
 ```
 
 Re-issues the saved YuE2 request with the same seed, producing the same
@@ -114,7 +118,7 @@ score.
 
 ## Song folder
 
-Each song lives in `songs/<date>-<slug>/`:
+Each song lives in `songs/<slug>-<date>/`:
 
 ```
 plan.json         creative plan       (source)
@@ -190,6 +194,29 @@ Everything lives in `config.yaml`.
 | `render` | VST3 routing, humanization, loudness target |
 | `video` | frame size, fit mode, x264 quality |
 
+### Folder naming
+
+`lyrics.date_in_folder` (default `true`) controls how new song folders
+are named:
+
+| Value | Format | Example |
+|-------|--------|---------|
+| `true` | `<slug>-<date>` | `neon-on-the-window-2026-10-05` |
+| `false` | `<slug>` | `neon-on-the-window` |
+
+With `false`, name collisions get a `-2`, `-3`, ... suffix.
+
+To migrate existing folders from the old `<date>-<slug>` scheme:
+
+```powershell
+pnpm rename-folders               # preview
+pnpm rename-folders -- --apply    # do it
+```
+
+The script uses `git mv`, so renames are recorded as renames in history,
+not delete + add. It's idempotent — folders already in the new format
+are skipped.
+
 ### Loudness
 
 Every render is normalized to a streaming target:
@@ -211,7 +238,7 @@ let the streaming service handle it.
 Check what a rendered song measures:
 
 ```powershell
-resonate show songs\2026-10-05-neon-on-the-window --loudness
+resonate show songs\neon-on-the-window-2026-10-05 --loudness
 #   loudness      -14.1 LUFS   -1.0 dBFS peak   on target
 ```
 
