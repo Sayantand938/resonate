@@ -74,24 +74,39 @@ render:
     target_lufs: -14
     true_peak_db: -1
 
-  # WAV render backend: "fluidsynth" (default) or "vst3".
+  # WAV render backend: "fluidsynth" (portable GM soundfont) or "vst3"
+  # (your own plugins, routed per MIDI channel below).
   #
-  # This tracked file holds portable defaults only. Machine-specific
-  # settings — absolute VST3 paths, a different backend, a pinned humanize
-  # seed — belong in the gitignored `config.local.yaml`, which is
-  # deep-merged over this file. See `config.local.yaml.example`.
-  backend: fluidsynth
+  # This project is set up for a single user, so there is no
+  # config.local.yaml — everything lives in this one file.
+  backend: vst3
 
   # VST3 routing table (only consulted when backend: vst3). Each entry maps
   # a set of MIDI channels to a VST3 instrument; channels not listed are
-  # dropped from the render. Configure it in config.local.yaml, e.g.
+  # dropped from the render.
   #
-  #   render:
-  #     vst3_routing:
-  #       - channels: [0, 1]
-  #         vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
-  #         gain: 0.9
-  vst3_routing: []
+  # Channels (from the pipeline's layout):
+  #   0  melody
+  #   1  counter-melody (V: Ins)
+  #   2  chord accompaniment
+  #   3  second accompaniment channel (if abcjs splits chords)
+  #
+  # The vst3 path is the inner .vst3 FILE, not the outer folder. On Windows
+  # that is usually:
+  #   <Name>.vst3/Contents/x86_64-win/<Name>.vst3
+  #
+  # REPLACE THESE PATHS WITH YOUR OWN. To list every installed VST3:
+  #   Get-ChildItem -Path 'C:\Program Files\Common Files\VST3' -Recurse `
+  #     -Filter *.vst3 |
+  #     Where-Object { $_.FullName -match 'x86_64-win' } |
+  #     Select-Object -ExpandProperty FullName
+  vst3_routing:
+    - channels: [0, 1]
+      vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+      gain: 0.9
+    - channels: [2, 3]
+      vst3: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
+      gain: 3.0
 
   # Humanize: subtle timing drift, velocity variation, and chord roll added
   # to the rendered MIDI before it goes to the audio backend.

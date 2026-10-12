@@ -87,11 +87,6 @@ $RECYCLE.BIN/
 .env.*
 !.env.example
 
-### Local machine overrides ###
-# Machine-specific config (absolute VST3 paths, render backend, pinned
-# humanize seed). Deep-merged over config.yaml. See config.local.yaml.example.
-config.local.yaml
-
 ### resonate — pipeline artifacts ###
 
 # Tracked sources (in git, do NOT ignore):
@@ -105,7 +100,6 @@ config.local.yaml
 
 # Ignored — regenerable from the sources above:
 songs/**/song.wav
-songs/**/song.mp3
 songs/**/song.mp4
 songs/**/.score.loud.mid
 
