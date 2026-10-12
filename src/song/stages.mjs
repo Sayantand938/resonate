@@ -17,6 +17,7 @@ import {
 } from './score/sheetsage-client.mjs';
 import { parseSongMarkdown } from './lyrics/parser.mjs';
 import { renderWithAbcjs } from '../abc/engine.mjs';
+import { voiceNamesByChannel } from '../abc/voices.mjs';
 import { humanizeMidiBuffer } from '../midi/humanize.mjs';
 import { renderWithBackend } from '../audio/backends.mjs';
 import {
@@ -121,18 +122,10 @@ export async function runMidi(config, songFolder, {
     }
     if (composer == null) composer = config.render.composer ?? null;
 
-    const vp = config.render.voicePrograms ?? {};
-    const programsByChannel = {
-        0: vp.melody ?? 0,
-        1: vp.ins ?? 0,
-        2: vp.accompaniment ?? 0,
-        3: vp.accompaniment2 ?? vp.accompaniment ?? 0,
-    };
-
     await renderWithAbcjs({
         abcPath,
         outMidiPath: midiPath,
-        programsByChannel,
+        programsByChannel: {},
         title,
         composer,
         tempo,
@@ -193,20 +186,77 @@ export async function runRender(config, songFolder, { keep = false } = {}) {
     }
 
     const wavPath = path.join(songFolder, 'song.wav');
+    const abcPath = path.join(songFolder, 'score.abc');
+
+    // Build VST3 routes from the ABC voice names, when the config provides
+    // a voice → instrument map. Falls through to the classic static
+    // routing table (config.render.vst3Routing) otherwise.
+    const routes = buildVoiceRoutes(config, abcPath, midiPath);
 
     // Backend selection, validation, and loudness normalization all live in
     // the registry; stages only decide which MIDI to render.
     const result = await renderWithBackend({
-        backend: config.render.backend ?? 'fluidsynth',
+        backend: config.render.backend ?? 'vst3',
         midiPath,
         wavPath,
         config,
+        routes,
         keep,
         // Stages run silently on success; the CLI wrappers report instead.
         silent: true,
     });
 
     return { wavPath: result.wavPath, midiPath };
+}
+
+/**
+ * Build a VST3 routes array from the ABC voice names in `config.render.voices`.
+ *
+ * Returns undefined when the config has no `voices` block, so callers fall
+ * back to the static `render.vst3_routing` table.
+ *
+ * Throws if a voice appears in the ABC but has no entry in `render.voices`.
+ * Silent drops are worse than an error: "why is my shamisen missing?" is a
+ * much harder debugging question than "voice Shamisen has no instrument."
+ */
+function buildVoiceRoutes(config, abcPath, midiPath) {
+    const voices = config.render.voices;
+    if (!voices || Object.keys(voices).length === 0) return undefined;
+
+    if (!fs.existsSync(abcPath) || !fs.existsSync(midiPath)) {
+        // No ABC or MIDI means we cannot derive voice names. Fall back to
+        // the static table rather than erroring.
+        return undefined;
+    }
+
+    const abcSource = fs.readFileSync(abcPath, 'utf8');
+    const midiBuffer = fs.readFileSync(midiPath);
+    const channelToVoice = voiceNamesByChannel(abcSource, midiBuffer);
+
+    if (Object.keys(channelToVoice).length === 0) {
+        return undefined;
+    }
+
+    const gains = config.render.gains ?? {};
+    const routes = [];
+
+    for (const [chStr, voiceName] of Object.entries(channelToVoice)) {
+        const vst3 = voices[voiceName];
+        if (!vst3) {
+            throw new Error(
+                `No instrument configured for ABC voice "${voiceName}" `
+                + `in ${path.basename(path.dirname(abcPath))}. `
+                + `Add it under render.voices in config.yaml.`
+            );
+        }
+        routes.push({
+            channels: [Number(chStr)],
+            vst3,
+            gain: gains[voiceName] ?? 1.0,
+        });
+    }
+
+    return routes;
 }
 
 // =====================================================================

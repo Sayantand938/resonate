@@ -6,74 +6,49 @@
 //
 // Loudness normalization is deliberately NOT a backend responsibility — it is
 // applied by renderWithBackend() after the backend returns. That is what stops
-// a new backend from silently skipping it, which is exactly how the VST3 path
-// ended up ~11 dB quieter than the FluidSynth path.
+// a new backend from silently skipping it.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { renderMidiToWav } from './fluidsynth.mjs';
 import { renderMidiToWavVst } from './vst3.mjs';
-import { normalizeMidiBuffer } from '../midi/normalize.mjs';
 import { applyLoudnessTarget } from './loudness.mjs';
 
 const BACKENDS = {
     /**
-     * FluidSynth + a General MIDI SoundFont. The portable default: it needs
-     * no machine-specific plugin paths, so a fresh clone can render.
-     */
-    fluidsynth: {
-        async render({ midiPath, wavPath, config, keep, silent, onStep }) {
-            // GM rendering is very velocity-sensitive, so squeeze the
-            // velocities into a sane band before handing them to FluidSynth.
-            const normMidi = path.join(path.dirname(midiPath), '.score.loud.mid');
-            const normalized = normalizeMidiBuffer(fs.readFileSync(midiPath));
-            fs.writeFileSync(normMidi, normalized.buffer);
-
-            try {
-                return await renderMidiToWav({
-                    midiPath: normMidi,
-                    wavPath,
-                    soundfont: config.render.soundfont ?? undefined,
-                    gain: config.render.gain ?? undefined,
-                    sampleRate: config.render.sampleRate,
-                    keep,
-                    silent,
-                    onStep,
-                });
-            } finally {
-                if (!keep) {
-                    try { fs.unlinkSync(normMidi); } catch { /* ignore */ }
-                }
-            }
-        },
-    },
-
-    /**
      * One or more VST3 instruments, routed per MIDI channel. Needs absolute
-     * plugin paths, which is why this belongs in config.local.yaml.
+     * plugin paths, which is why this is machine-specific config.
+     *
+     * Routes come from one of two places:
+     *   - the `routes` argument (built by the caller, e.g. from voice names)
+     *   - config.render.vst3Routing (the static table for older setups)
      */
     vst3: {
-        validate(config) {
-            const routing = config.render.vst3Routing ?? [];
-            if (routing.length === 0) {
-                throw new Error('render.vst3_routing is empty in config.yaml');
+        validate(config, routes) {
+            const effective = routes ?? config.render.vst3Routing ?? [];
+            if (effective.length === 0) {
+                throw new Error(
+                    'No VST3 routes: neither a routes argument nor '
+                    + 'render.vst3_routing is set.'
+                );
             }
-            for (const r of routing) {
+            for (const r of effective) {
                 if (!fs.existsSync(r.vst3)) {
                     throw new Error(`VST3 not found: ${r.vst3}`);
                 }
             }
         },
 
-        async render({ midiPath, wavPath, config, silent }) {
+        async render({ midiPath, wavPath, config, silent, routes }) {
+            const effectiveRoutes = routes ?? (config.render.vst3Routing ?? []).map((r) => ({
+                channels: r.channels,
+                vst3: r.vst3,
+                gain: r.gain ?? 1.0,
+            }));
+
             return renderMidiToWavVst({
                 midiPath,
                 wavPath,
-                routes: (config.render.vst3Routing ?? []).map((r) => ({
-                    channels: r.channels,
-                    vst3: r.vst3,
-                    gain: r.gain ?? 1.0,
-                })),
+                routes: effectiveRoutes,
                 sampleRate: config.render.sampleRate,
                 normalize: true,
                 silent,
@@ -96,6 +71,7 @@ export function listBackends() {
  * @param {string} opts.midiPath
  * @param {string} opts.wavPath
  * @param {Object} opts.config           full config (uses config.render)
+ * @param {Array} [opts.routes]          VST3 routes to use instead of config
  * @param {boolean} [opts.keep=false]
  * @param {boolean} [opts.silent=false]
  * @param {(msg:string)=>void} [opts.onStep]
@@ -106,6 +82,7 @@ export async function renderWithBackend({
     midiPath,
     wavPath,
     config,
+    routes,
     keep = false,
     silent = false,
     onStep,
@@ -118,10 +95,10 @@ export async function renderWithBackend({
         );
     }
 
-    entry.validate?.(config);
+    entry.validate?.(config, routes);
 
     const result = await entry.render({
-        midiPath, wavPath, config, keep, silent, onStep,
+        midiPath, wavPath, config, routes, keep, silent, onStep,
     });
 
     if (!fs.existsSync(wavPath)) {

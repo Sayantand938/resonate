@@ -15,8 +15,7 @@
   ],
   "scripts": {
     "list": "node bin/cli.js list",
-    "test": "node --test src/**/*.test.mjs",
-    "install-soundfont": "powershell -ExecutionPolicy Bypass -File scripts/install-soundfont.ps1"
+    "test": "node --test src/**/*.test.mjs"
   },
   "keywords": [
     "music",
@@ -28,7 +27,7 @@
     "yue2",
     "llm",
     "openai",
-    "fluidsynth",
+    "vst3",
     "cli"
   ],
   "author": "",

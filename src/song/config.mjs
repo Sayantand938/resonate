@@ -81,8 +81,6 @@ export function loadConfig(configPathOverride) {
     const writerModel = lyricsRaw.writer_model ?? 'openai/gpt-5.6-luna';
     const plannerModel = lyricsRaw.planner_model ?? writerModel;
 
-    const voiceProgramsRaw = renderRaw.voice_programs ?? {};
-
     const cfg = {
         root: base,
         paths: {
@@ -123,9 +121,7 @@ export function loadConfig(configPathOverride) {
             timeoutSeconds: Number(transcribeRaw.timeout_seconds ?? 1800),
         },
         render: {
-            soundfont: renderRaw.soundfont ?? null,
             sampleRate: Number(renderRaw.sample_rate ?? 44100),
-            gain: Number(renderRaw.gain ?? 1.0),
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
 
@@ -139,8 +135,21 @@ export function loadConfig(configPathOverride) {
                 truePeakDb: Number(loudRaw.true_peak_db ?? -1),
             },
 
-            backend: String(renderRaw.backend ?? 'fluidsynth').toLowerCase(),
+            backend: String(renderRaw.backend ?? 'vst3').toLowerCase(),
 
+            // Voice-name → VST3 path. Keys are ABC voice names (Vocal, Ins,
+            // Shamisen, ...) plus the reserved key "accompaniment" for the
+            // abcjs-generated chord track. When this map is non-empty,
+            // runRender builds VST3 routes by voice name instead of using
+            // the static vst3Routing table below.
+            voices: isPlainObject(renderRaw.voices) ? { ...renderRaw.voices } : {},
+
+            // Per-voice gain, keyed the same as `voices`. Voices not listed
+            // default to gain 1.0.
+            gains: isPlainObject(renderRaw.gains) ? { ...renderRaw.gains } : {},
+
+            // Static VST3 routing table. Fallback for setups that don't use
+            // `voices`. Ignored when `voices` is non-empty.
             vst3Routing: Array.isArray(renderRaw.vst3_routing)
                 ? renderRaw.vst3_routing.map((r) => ({
                     channels: Array.isArray(r.channels) ? r.channels : [r.channels],
@@ -158,23 +167,6 @@ export function loadConfig(configPathOverride) {
                 minVel: Number(humanRaw.min_vel ?? 40),
                 maxVel: Number(humanRaw.max_vel ?? 115),
                 seed: Number(humanRaw.seed ?? 0),
-            },
-
-            voicePrograms: {
-                melody: Number(voiceProgramsRaw.melody ?? 0),
-                ins: Number(voiceProgramsRaw.ins ?? 0),
-                accompaniment: Number(
-                    voiceProgramsRaw.accompaniment
-                    ?? voiceProgramsRaw.chords
-                    ?? 0
-                ),
-                accompaniment2: Number(
-                    voiceProgramsRaw.accompaniment2
-                    ?? voiceProgramsRaw.chords2
-                    ?? voiceProgramsRaw.accompaniment
-                    ?? voiceProgramsRaw.chords
-                    ?? 0
-                ),
             },
         },
         video: {

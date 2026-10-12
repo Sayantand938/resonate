@@ -53,17 +53,12 @@ transcribe:
   timeout_seconds: 1800
 
 render:
-  soundfont: null
   sample_rate: 44100
-  gain: 1.0
   timeout_seconds: 300
   composer: Sayantan
 
-  # Final loudness normalization, applied to the WAV whichever backend
-  # produced it. These are the Spotify delivery targets:
-  #
-  #   target_lufs   integrated loudness (-14 LUFS is Spotify/YouTube)
-  #   true_peak_db  true-peak ceiling, so lossy transcoding can't clip
+  # Final loudness normalization, applied after the backend returns.
+  # Spotify / YouTube targets: -14 LUFS integrated, -1 dBTP true peak.
   #
   # Reaching the target from a very dynamic mix needs some gain reduction,
   # because loudnorm limits rather than clips. Raise target_lufs towards
@@ -74,39 +69,49 @@ render:
     target_lufs: -14
     true_peak_db: -1
 
-  # WAV render backend: "fluidsynth" (portable GM soundfont) or "vst3"
-  # (your own plugins, routed per MIDI channel below).
-  #
-  # This project is set up for a single user, so there is no
-  # config.local.yaml — everything lives in this one file.
+  # WAV render backend. Only "vst3" is supported.
   backend: vst3
 
-  # VST3 routing table (only consulted when backend: vst3). Each entry maps
-  # a set of MIDI channels to a VST3 instrument; channels not listed are
-  # dropped from the render.
+  # ---- VST3 routing by ABC voice name ----
   #
-  # Channels (from the pipeline's layout):
-  #   0  melody
-  #   1  counter-melody (V: Ins)
-  #   2  chord accompaniment
-  #   3  second accompaniment channel (if abcjs splits chords)
+  # Each key is the name of a voice in the score. `V: Vocal` in the ABC
+  # means the key is "Vocal"; `V: Ins` means "Ins". The reserved key
+  # "accompaniment" refers to the chord track abcjs generates from the
+  # "C", "G7", "Fmaj7" chord symbols — it has no `V:` line of its own.
   #
-  # The vst3 path is the inner .vst3 FILE, not the outer folder. On Windows
-  # that is usually:
+  # This map is universal: every song that declares a voice named here
+  # uses the corresponding plugin. Adding a Shamisen to one song's ABC
+  # and adding `Shamisen: "..."` here makes it available to every future
+  # song that declares the same voice.
+  #
+  # Voices that appear in a score but not in this map cause a render
+  # error naming the missing voice. Silent drops would be worse.
+  #
+  # The vst3 path is the inner .vst3 FILE, not the outer folder. On
+  # Windows that is usually:
   #   <Name>.vst3/Contents/x86_64-win/<Name>.vst3
+  # Some plugins ship as a single .vst3 file directly; use that path then.
   #
-  # REPLACE THESE PATHS WITH YOUR OWN. To list every installed VST3:
+  # To list every installed VST3:
   #   Get-ChildItem -Path 'C:\Program Files\Common Files\VST3' -Recurse `
   #     -Filter *.vst3 |
   #     Where-Object { $_.FullName -match 'x86_64-win' } |
   #     Select-Object -ExpandProperty FullName
-  vst3_routing:
-    - channels: [0, 1]
-      vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
-      gain: 0.9
-    - channels: [2, 3]
-      vst3: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
-      gain: 3.0
+  voices:
+    Vocal:         "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+    Ins:           "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+    accompaniment: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
+
+  # Per-voice gain. Voices not listed default to 1.0. Use this to balance
+  # plugins that output at very different levels.
+  gains:
+    Vocal:         0.9
+    Ins:           0.9
+    accompaniment: 3.0
+
+  # Static VST3 routing table. Fallback for setups that don't use `voices`.
+  # Ignored when `voices` is non-empty.
+  vst3_routing: []
 
   # Humanize: subtle timing drift, velocity variation, and chord roll added
   # to the rendered MIDI before it goes to the audio backend.
@@ -136,14 +141,6 @@ render:
     min_vel: 40
     max_vel: 115
     seed: 0
-
-  # MIDI program numbers per role. Only used by the FluidSynth backend.
-  # 0=Acoustic Grand Piano   4=Rhodes        24=Nylon Guitar   25=Steel Guitar
-  voice_programs:
-    melody:         24
-    ins:             0
-    accompaniment:   0
-    accompaniment2:  0
 
 # Video: `resonate video` pairs song.wav with the still image in the song
 # folder (thumbnail.png / .jpg / .jpeg / .webp) and writes song.mp4.

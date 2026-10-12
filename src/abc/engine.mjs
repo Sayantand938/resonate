@@ -26,7 +26,11 @@ async function loadAbcjs() {
  * @param {Object} opts
  * @param {string} opts.abcPath
  * @param {string} opts.outMidiPath
- * @param {Object<number, number>} opts.programsByChannel
+ * @param {Object<number, number>} [opts.programsByChannel]
+ *   Optional GM program injection, keyed by MIDI channel. The pipeline's
+ *   runMidi passes `{}` — VST3 ignores program changes — but the standalone
+ *   `scripts/abc-render.mjs` uses it to write a MIDI file whose programs
+ *   mean something to a DAW.
  * @param {Object<number, number>} [opts.trackToChannel]
  *   Override the derived track → channel map. When omitted, the map is
  *   derived from the ABC source and the MIDI abcjs produced (see
@@ -77,6 +81,9 @@ export async function renderWithAbcjs({
         midiBuffer = remapChannels(midiBuffer, remap);
     }
 
+    // No-op when programsByChannel is empty. The pipeline passes `{}` so
+    // VST3 renders ignore program changes; standalone ABC → MIDI rendering
+    // passes real programs for DAW import.
     if (Object.keys(programsByChannel).length) {
         midiBuffer = injectPrograms(midiBuffer, programsByChannel);
     }
@@ -94,6 +101,8 @@ export async function renderWithAbcjs({
  * Accepts either explicit pairs or bare positions:
  *   "0:24,1:0,2:0"   → { 0: 24, 1: 0, 2: 0 }
  *   "24,0,0"         → { 0: 24, 1: 0, 2: 0 }
+ *
+ * Used by scripts/abc-render.mjs; the pipeline does not call this.
  *
  * @param {string} [str]
  * @returns {Object<number, number>}

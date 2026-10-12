@@ -46,6 +46,10 @@ registerRecreate(program);
 registerDev(program);
 
 program.parseAsync(process.argv).catch((err) => {
-    console.error(err.message);
+    // Print the stack, not just the message. This is the tool for a single
+    // developer, so the stack is information, not noise — an unexpected
+    // crash is exactly when it matters most, and the old version threw it
+    // away.
+    console.error(err.stack ?? err.message);
     process.exit(1);
 });
