@@ -1,0 +1,38 @@
+X:1
+T:Ghost in the Basement (Full Song)
+C:Emo / Cinematic Piano
+M:4/4
+L:1/8
+Q:1/4=84
+K:Am
+%%staves {1 2}
+V:1 clef=treble name="Piano Right Hand"
+%%MIDI program 0
+V:2 clef=bass name="Piano Left Hand"
+%%MIDI program 0
+% --- INTRO ---
+[V:1] |: "Am"e2 cA e2 cA | "F"f2 ed c2 BA | "C"e2 dc g2 ec | "E"B2 ^GE B2 ^GE :|
+[V:2] |: A,,2 E,2 A,2 E,2 | F,,2 C,2 F,2 C,2 | C,,2 G,,2 C,2 G,,2 | E,,2 B,,2 E,2 B,,2 :|
+% --- VERSE 1 ---
+[V:1] | "Am"A2 cA e2 cA | "F"f2 ed c2 BA | "C"e2 dc g2 ec | "E"B2 ^G2 E2 ^GE |
+[V:2] | A,,2 E,2 A,2 E,2 | F,,2 C,2 F,2 C,2 | C,,2 G,,2 C,2 G,,2 | E,,2 B,,2 E,2 B,,2 |
+[V:1] | "Am"A2 cA e2 cA | "F"f2 ed c3 A | "Dm"d2 cA "F"c2 BA | "E"B4 "E7"^G4 |
+[V:2] | A,,2 E,2 A,2 E,2 | F,,2 C,2 F,2 C,2 | D,,2 A,,2 F,,2 C,2 | E,,4 E,4 |
+% --- CHORUS A ---
+[V:1] | "F"[A2c2f2] e2 [A2c2f2] e2 | "C"[G2c2e2] d2 [G2c2e2] c2 | "Am"[E2A2c2] BA [E2A2c2] BA | "G"[D2G2B2] AG "E7"[D2^G2B2] E2 |
+[V:2] | F,,2 C,2 F,2 C,2 | C,,2 G,,2 C,2 G,,2 | A,,2 E,2 A,2 E,2 | G,,2 D,2 E,,2 B,,2 |
+[V:1] | "F"[A2c2f2] e2 [A2c2f2] e2 | "C"[G2c2e2] d2 "E7"[B2d2e2] c2 | "Dm"f2 ed "F"a2 ge | "G"d2 cB "Am"c4 |
+[V:2] | F,,2 C,2 F,2 C,2 | C,,2 G,,2 E,,2 B,,2 | D,,2 A,,2 F,,2 C,2 | G,,2 D,2 A,,4 |
+% --- VERSE 2 ---
+[V:1] | "Am"A2 cA e2 cA | "F"a2 ge f2 ed | "C"g2 ed e2 cG | "E"B2 ^GE B2 ^GE |
+[V:2] | A,,2 [A,C]2 E,2 [A,C]2 | F,,2 [A,C]2 C,2 [A,C]2 | C,,2 [G,C]2 G,,2 [G,C]2 | E,,2 [^G,B,]2 E,2 [^G,B,]2 |
+[V:1] | "Am"A2 cA e2 cA | "F"a2 ge f3 e | "Dm"d2 fA "F"c2 eA | "E"B4 "E7"^G4 |
+[V:2] | A,,2 [A,C]2 E,2 [A,C]2 | F,,2 [A,C]2 C,2 [A,C]2 | D,,2 [A,F]2 F,,2 [A,F]2 | E,,4 E,4 |
+% --- CHORUS B (CLIMAX) ---
+[V:1] | "F"[A4c4f4] [f4a4c'4] | "C"[G4c4e4] [e4g4c'4] | "Am"[E2A2c2] ba [E2A2c2] ba | "G"[D2G2B2] ag "E7"[D2^G2B2] e2 |
+[V:2] | F,,2 F,2 F,,2 F,2 | C,,2 C,2 C,,2 C,2 | A,,2 A,2 A,,2 A,2 | G,,2 G,2 E,,2 E,2 |
+[V:1] | "F"[f2a2c'2] ba [f2a2c'2] ba | "C"[e2g2c'2] ge "E7"[e2^g2b2] e2 | "Dm"[f2a2d'2] c'b "F"[a2c'2f'2] ge | "G"[d2g2b2] c'b "Am"[c'4e'4a'4] |
+[V:2] | F,,2 F,2 F,,2 F,2 | C,,2 C,2 E,,2 E,2 | D,,2 D,2 F,,2 F,2 | G,,2 G,2 A,,4 |
+% --- OUTRO ---
+[V:1] | "Am"e2 cA e2 cA | "F"f2 ed c2 BA | "C"e2 dc "E"B2 ^GE | "Am"[A,8C8E8A8] |]
+[V:2] | A,,2 E,2 A,2 E,2 | F,,2 C,2 F,2 C,2 | C,,2 G,,2 E,,2 B,,2 | A,,8 |]

@@ -1,0 +1,75 @@
+X:1
+T:
+N:Sweet acoustic arrangement
+M:4/4
+L:1/8
+Q:1/4=112
+V:Vocal clef=treble name="Vocal Melody" snm="Vocal"
+V:Gtr clef=treble name="Acoustic Guitar" snm="Gtr."
+%%MIDI program 25
+%%MIDI gchord fzczfzcz
+K:Eb
+% ---------- verse 1 ----------
+V:Vocal
+"Eb"EE GG Gz GA|"Fm"FF AA Az EE|"Bb"DD FF FG EF|"Eb"G2 z4 EE|
+"Eb"EE GG Gz GA|"Fm"FF AA A2 zC|"Bb"DD FF FG EF|"Eb"G2 z4 zB|
+"Bb"Be ee ef "Bb"ed-|"Bb"dB "Eb"Be ef "Bb"d2|"Bb"zB ff ff gf|"Bb"ed "Eb"e4 z2|
+"Eb"zB ee ef "Bb"d2|"Bb"B/z/B "Eb"ee ef "Bb"d2|"Bb"zB dc BA "Ab"Ac|"Ab"BG "Bb"A F4 z|
+V:Gtr
+"Eb"z2e2G2B2|"Fm"z2f2c2A2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|
+"Eb"z2B2G2e2|"Fm"z2c2A2f2|"Bb"z2B2F2d2|"Eb"z2e2G2B2|
+"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|
+"Eb"z2B2G2e2|"Bb"z2d2F2B2|"Ab"z2c2E2A2|"Bb"z2d2F2B2|
+% ---------- chorus 1 ----------
+V:Vocal
+"Eb"zE FG BA GF|"Bb"GF F3G G2|"Eb"zE FG BA GF|"Eb"FE E4 z2|
+"Eb"zE FG AB AG|"Bb"GF F3G G2|"Eb"zE FG BA GF|"Eb"FE E4 z2|
+V:Gtr
+"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Eb"z2B2G2e2|
+"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Eb"z6|
+% ---------- verse 2 ----------
+V:Vocal
+"Eb"EE GG Gz GA|"Fm"FF AA Az2 E|"Bb"DD FF FG "Eb"FG-|"Eb"G2 z4 zE|
+"Eb"EE EE EE GG|"Eb"GG Gz2 G "Fm"AF|"Fm"FF AA A2 zD|"Bb"DD FF FG "Eb"FG-|
+"Eb"G3 z3 BB|"Eb"ee "Bb"ed2 B|"Eb"ee ef "Bb"ed2 B|"Bb"ff ff fg fe|
+"Bb"de- "Eb"e3 z2 B|"Eb"ee ee ee "Bb"ed-|"Bb"dB "Eb"ee ef "Bb"ed|"Bb"Bz BB dc cB|
+"Ab"cB GA "Bb"F4|"Bb"z6"Eb"z2|
+V:Gtr
+"Eb"z2e2G2B2|"Fm"z2f2c2A2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|
+"Eb"z2B2G2e2|"Eb"z2e2G2B2|"Fm"z2f2c2A2|"Bb"z2d2F2B2|
+"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|
+"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Ab"z2c2E2A2|
+"Bb"z2d2F2B2|"Eb"z6|
+% ---------- chorus 2 ----------
+V:Vocal
+"Eb"EF BA GF "Bb"GF|"Bb"FF F3G G2|"Eb"EF GB AG FF|"Eb"EE E4 z2|
+"Eb"EF GA BA "Bb"GF|"Bb"FF F3G G2|"Eb"zE FG BA GF|"Eb"FE E4 z2|
+V:Gtr
+"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Eb"z2B2G2e2|
+"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Eb"z6|
+% ---------- verse 3 ----------
+V:Vocal
+"Eb"EE EG GG GG|"Eb"zG GA "Fm"FF AA|"Fm"A2 zD "Bb"DD FF|"Bb"FF FF FE "Eb"FG|
+"Eb"G2 z3 EEE|"Eb"EE GG Gz2 G|"Eb"GG "Fm"AF AA2 z|"Fm"zD "Bb"DD FF FE|
+"Bb"FG- "Eb"G z3 BB|"Eb"ee "Bb"ed2 B "Eb"Be|"Eb"ee ee "Bb"fd2 z|"Bb"Bf ff fg fe|
+"Eb"e4 z2 BB|"Eb"ee ef "Bb"d2 BB|"Eb"ee ef "Bb"Bz Bd|"Bb"cB BA "Ab"Ac BG|
+"Bb"AF4 z3|
+V:Gtr
+"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Fm"z2f2c2A2|"Bb"z2d2F2B2|
+"Eb"z2B2G2e2|"Eb"z2e2G2B2|"Fm"z2f2c2A2|"Bb"z2d2F2B2|
+"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Bb"z2d2F2B2|
+"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|"Ab"z2c2E2A2|
+"Bb"z2d2F2B2|
+% ---------- final chorus ----------
+V:Vocal
+"Eb"EF GB AG GG|"Eb"GG GB AG FG|"Bb"GF F3G G2|"Eb"EF GB AG FF|
+"Eb"FE E4 z2|"Eb"EF GA BA GF|"Bb"GF F3G G2|"Eb"zE FG BA G2|
+"Eb"EF GB AG FF|"Eb"E4 EF GB|"Eb"AG GF "Bb"FF F2-|"Bb"FG G2 "Eb"EF GB|
+"Eb"AG FE EE E2-|"Eb"E2 z4 EF|"Eb"GA BA BA GF|"Bb"GF F3G G2|
+"Eb"EF GB AG FF|"Eb"E E4 z3|"Eb"z8|"Eb"z8|
+V:Gtr
+"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|
+"Eb"z2B2G2e2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z6|
+"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|"Eb"z2e2G2B2|
+"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Bb"z2d2F2B2|
+"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Eb"z2e2G2B2|"Eb"z2e2G2B2|

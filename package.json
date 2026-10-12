@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "list": "node bin/cli.js list",
+    "test": "node --test src/**/*.test.mjs",
     "install-soundfont": "powershell -ExecutionPolicy Bypass -File scripts/install-soundfont.ps1"
   },
   "keywords": [

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { injectTitleAndComposer, injectPrograms } from '../midi/meta.mjs';
 import { remapChannels } from '../midi/remap.mjs';
+import { deriveTrackToChannelMap } from './track-map.mjs';
 
 let _abcjs = null;
 
@@ -26,6 +27,11 @@ async function loadAbcjs() {
  * @param {string} opts.abcPath
  * @param {string} opts.outMidiPath
  * @param {Object<number, number>} opts.programsByChannel
+ * @param {Object<number, number>} [opts.trackToChannel]
+ *   Override the derived track → channel map. When omitted, the map is
+ *   derived from the ABC source and the MIDI abcjs produced (see
+ *   track-map.mjs). Pass it explicitly when the caller already knows the
+ *   layout — for example, when replaying a previously rendered file.
  * @param {string} [opts.title]
  * @param {string} [opts.composer]
  * @param {number} [opts.tempo]
@@ -36,6 +42,7 @@ export async function renderWithAbcjs({
     abcPath,
     outMidiPath,
     programsByChannel = {},
+    trackToChannel,
     title,
     composer,
     tempo,
@@ -60,15 +67,14 @@ export async function renderWithAbcjs({
     let midiBuffer = midiFromAbcjsHtml(htmlArray[0]);
     midiBuffer = injectTitleAndComposer(midiBuffer, { title, composer });
 
-    // Derive the track → channel remap from the ABC source and the MIDI
-    // buffer abcjs produced. abcjs emits track 0 as conductor, tracks 1..N
-    // for the named voices, and — if the ABC has chord symbols — a final
-    // track for auto-generated accompaniment. That accompaniment uses
-    // channels 0 and 2 by default, which collides with the melody voice.
-    // We remap every track to its own dedicated channel.
-    const trackToChannel = deriveTrackToChannelMap(source, midiBuffer);
-    if (Object.keys(trackToChannel).length > 0) {
-        midiBuffer = remapChannels(midiBuffer, trackToChannel);
+    // abcjs emits track 0 as conductor, tracks 1..N for the named voices,
+    // and — if the ABC has chord symbols — a final track for the auto-
+    // generated accompaniment. That accompaniment reuses channels 0 and 2,
+    // which collides with the melody voice. Remap each track to its own
+    // dedicated channel before injecting programs.
+    const remap = trackToChannel ?? deriveTrackToChannelMap(source, midiBuffer);
+    if (Object.keys(remap).length > 0) {
+        midiBuffer = remapChannels(midiBuffer, remap);
     }
 
     if (Object.keys(programsByChannel).length) {
@@ -99,7 +105,15 @@ export function parseProgramsSpec(str) {
     if (str.includes(':')) {
         for (const pair of str.split(',')) {
             const [ch, prog] = pair.split(':').map((s) => Number(s.trim()));
-            if (Number.isInteger(ch) && Number.isInteger(prog)) map[ch] = prog;
+            if (Number.isInteger(ch) && Number.isInteger(prog)) {
+                if (ch > 15) {
+                    console.error(
+                        `[warn] abc-engine: --programs channel ${ch} is out of range (0-15); ignoring.`
+                    );
+                    continue;
+                }
+                map[ch] = prog;
+            }
         }
     } else {
         str.split(',').forEach((p, i) => {
@@ -108,74 +122,6 @@ export function parseProgramsSpec(str) {
         });
     }
     return map;
-}
-
-/**
- * Build the { trackIndex → channel } map for the given ABC source and
- * the MIDI buffer abcjs produced from it.
- *
- * Track 0: conductor — never remapped.
- * Tracks 1..N: named voices, in order of first appearance. Each gets
- *   channel 0..N-1.
- * Track N+1 (if present): abcjs's auto-generated accompaniment. Gets
- *   channel N — the next free channel.
- *
- * @param {string} abcSource
- * @param {Buffer} midiBuffer
- * @returns {Object<number, number>}
- */
-function deriveTrackToChannelMap(abcSource, midiBuffer) {
-    const seen = new Set();
-    const order = [];
-
-    for (const rawLine of String(abcSource).split(/\r?\n/)) {
-        const m = rawLine.match(/^\s*V:\s*([^\s\[\]]+)/);
-        if (!m) continue;
-        const name = m[1];
-        if (seen.has(name)) continue;
-        seen.add(name);
-        order.push(name);
-    }
-
-    const voiceCount = order.length;
-    const midiTrackCount = countMidiTracks(midiBuffer);
-    const hasAccompaniment = midiTrackCount > voiceCount + 1;
-
-    const map = {};
-    const maxChannels = 16;
-
-    const usableVoices = Math.min(voiceCount, maxChannels);
-    if (voiceCount > maxChannels) {
-        console.error(
-            `[warn] abc-engine: ${voiceCount} voices in ABC, but MIDI ` +
-            `has only ${maxChannels} channels. Voices beyond ${maxChannels} ` +
-            `will share channels with earlier voices.`
-        );
-    }
-    for (let i = 0; i < usableVoices; i++) {
-        map[i + 1] = i;
-    }
-
-    if (hasAccompaniment) {
-        const accompTrackIdx = voiceCount + 1;
-        const accompChannel = voiceCount;
-        if (accompChannel < maxChannels) {
-            map[accompTrackIdx] = accompChannel;
-        } else {
-            console.error(
-                `[warn] abc-engine: no free channel for accompaniment; ` +
-                `leaving it on its original channels (may collide).`
-            );
-        }
-    }
-
-    return map;
-}
-
-function countMidiTracks(midiBuffer) {
-    if (midiBuffer.length < 14) return 0;
-    if (midiBuffer.toString('ascii', 0, 4) !== 'MThd') return 0;
-    return midiBuffer.readUInt16BE(10);
 }
 
 /**

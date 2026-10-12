@@ -1,0 +1,33 @@
+{
+  "provider": "sheetsage2",
+  "model": "sheetsage2",
+  "endpoint": "http://127.0.0.1:8081/v1/tasks/run",
+  "source": "og_song.mp3",
+  "requested_at": "2026-10-06T18:38:52.834Z",
+  "finished_at": "2026-10-06T18:44:06.862Z",
+  "elapsed_ms": 314027,
+  "source_bytes": 14263725,
+  "response_summary": {
+    "top_level_keys": [
+      "text",
+      "language",
+      "artifacts",
+      "timing"
+    ],
+    "artifacts": [
+      {
+        "id": "score",
+        "format": "abc",
+        "bytes": 3444
+      },
+      {
+        "id": "events",
+        "format": "sheetsage2-events-json",
+        "bytes": 235900
+      }
+    ],
+    "abc_length": 2581,
+    "abc_lines": 122
+  },
+  "recreate_hint": "resonate transcribe D:\\coding\\resonate\\songs\\2026-10-06-amar-dehokhan --force"
+}

@@ -12,7 +12,6 @@ const STAGE_LABELS = {
     midi: ['song rendered to MIDI', 'songs rendered to MIDI'],
     render: ['song rendered to WAV', 'songs rendered to WAV'],
     video: ['song rendered to video', 'songs rendered to video'],
-    all: ['operation', 'operations'],
 };
 
 export function setExit(code) {
@@ -56,7 +55,115 @@ function printSkips(skipped) {
     }
 }
 
+/**
+ * Counts of done/skipped/failed for a set of results, keyed by stage.
+ * Results without a stage (older callers, lyrics) are grouped under the
+ * stage the summary was invoked with.
+ */
+function groupByStage(results, defaultStage) {
+    const groups = new Map();
+    for (const r of results) {
+        const stage = r.stage ?? defaultStage;
+        if (!groups.has(stage)) {
+            groups.set(stage, { done: 0, skipped: 0, failed: 0 });
+        }
+        const g = groups.get(stage);
+        if (!r.ok && !r.skipped) g.failed++;
+        else if (r.skipped) g.skipped++;
+        else g.done++;
+    }
+    return groups;
+}
+
+/**
+ * `all` is three stages in one, so its summary reports each stage
+ * separately. Reporting "6 operations, 4 skipped" tells the user nothing
+ * about whether the failure was in scoring, MIDI, or rendering.
+ */
+function printAllSummary(results) {
+    const groups = groupByStage(results, 'all');
+
+    let totalDone = 0;
+    let totalSkipped = 0;
+    let totalFailed = 0;
+    for (const g of groups.values()) {
+        totalDone += g.done;
+        totalSkipped += g.skipped;
+        totalFailed += g.failed;
+    }
+
+    if (totalDone === 0 && totalFailed === 0) {
+        console.log(`[all] nothing to do — ${totalSkipped} skipped`);
+        printSkips(results.filter((r) => r.skipped));
+        console.log('');
+        return 0;
+    }
+
+    console.log('');
+    console.log(
+        totalFailed > 0
+            ? chalk.yellow(`[all] ${totalDone} done, ${totalSkipped} skipped, ${totalFailed} failed.`)
+            : `[all] ${totalDone} done, ${totalSkipped} skipped, ${totalFailed} failed.`
+    );
+
+    // Per-stage line, ordered score → midi → render (the pipeline order),
+    // then any other stage that snuck in.
+    const order = ['score', 'transcribe', 'midi', 'render'];
+    const stages = [...groups.keys()].sort((a, b) => {
+        const ai = order.indexOf(a);
+        const bi = order.indexOf(b);
+        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+
+    for (const stage of stages) {
+        const g = groups.get(stage);
+        if (g.done === 0 && g.skipped === 0 && g.failed === 0) continue;
+        const labels = STAGE_LABELS[stage] ?? ['operation', 'operations'];
+        console.log(
+            `  ${stage.padEnd(10)} ${g.done} ${labels[g.done === 1 ? 0 : 1]}, `
+            + `${g.skipped} skipped, ${g.failed} failed`
+        );
+    }
+    console.log('');
+
+    const failed = results.filter((r) => !r.ok && !r.skipped);
+    if (failed.length > 0) {
+        console.log('Failures:');
+        for (const r of failed) {
+            console.log(
+                `  - ${chalk.red(nameOf(r))}  ${chalk.dim(r.stage ?? '')}  —  `
+                + r.error.split('\n')[0]
+            );
+        }
+        console.log('');
+    }
+
+    const warned = results.filter((r) => r.skipped && r.warn);
+    if (warned.length > 0) {
+        console.log('Warnings:');
+        for (const r of warned) {
+            console.log(
+                `  - ${chalk.yellow(nameOf(r))}  ${chalk.dim(r.stage ?? '')}  —  ${r.reason}`
+            );
+        }
+        console.log('');
+    }
+
+    const plainSkips = results.filter((r) => r.skipped && !r.warn);
+    if (plainSkips.length > 0) {
+        console.log('Skipped:');
+        printSkips(plainSkips);
+        console.log('');
+    }
+
+    return totalFailed === 0 ? 0 : 1;
+}
+
 export function printStageSummary(results, { stage, single = false }) {
+    if (stage === 'all') {
+        return printAllSummary(results);
+    }
+
     if (single) {
         const r = results[0];
         if (!r) return 0;

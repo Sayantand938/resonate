@@ -1,22 +1,14 @@
 // src/song/score/sheetsage-client.mjs
 // Transcribe an existing recording to an ABC score via SheetSage2.
 //
-// This is the mirror image of yue2-client.mjs: YuE2 invents a score from
-// lyrics, SheetSage2 listens to audio and writes one down. Both produce the
-// same artifact — score.abc — so everything downstream is unchanged.
-//
-// Server notes (learned the hard way):
-//   * SheetSage2 must run in a process whose backend is cpu. audio.cpp
-//     ignores the per-model "backend" key, so a server with a global vulkan
-//     backend dies with "encoder backend buffer allocation failed" on AMD.
-//     Hence a separate server on its own port.
-//   * The request takes no seed. The server rejects unknown options outright
-//     ("unknown SheetSage2 request option: seed"), which is how we found out.
-//   * Audio goes in through /v1/ui/upload, which returns a server-side path.
+// Uses node:http / node:https directly instead of global fetch to bypass
+// Node's hardcoded 300-second (5 min) undici UND_ERR_HEADERS_TIMEOUT ceiling.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import http from 'node:http';
+import https from 'node:https';
 import { toCleanWav } from '../../audio/prepare.mjs';
 
 /** Source recordings looked for in a song folder, in priority order. */
@@ -39,6 +31,61 @@ export function findSourceAudio(songFolder) {
 
 export class SheetSageClientError extends Error { }
 
+function debug(msg) {
+    console.error(`\x1b[36m[sheetsage-debug]\x1b[0m ${msg}`);
+}
+
+/**
+ * Standard HTTP/HTTPS request helper without Node fetch's 5-minute header timeout.
+ */
+function httpRequest(urlStr, { method = 'GET', headers = {}, body = null, timeoutMs = 1800000 } = {}) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(urlStr);
+        const transport = url.protocol === 'https:' ? https : http;
+
+        const req = transport.request(url, {
+            method,
+            headers,
+        }, (res) => {
+            const chunks = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => {
+                const resBody = Buffer.concat(chunks).toString('utf8');
+                resolve({
+                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    status: res.statusCode,
+                    text: async () => resBody,
+                    json: async () => JSON.parse(resBody),
+                });
+            });
+            res.on('error', reject);
+        });
+
+        let timer = null;
+        if (timeoutMs > 0) {
+            timer = setTimeout(() => {
+                const err = new Error(`Timed out after ${Math.round(timeoutMs / 1000)}s`);
+                err.name = 'TimeoutError';
+                req.destroy(err);
+            }, timeoutMs);
+        }
+
+        req.on('error', (err) => {
+            if (timer) clearTimeout(timer);
+            reject(err);
+        });
+
+        req.on('close', () => {
+            if (timer) clearTimeout(timer);
+        });
+
+        if (body) {
+            req.write(body);
+        }
+        req.end();
+    });
+}
+
 /** Decode the ABC artifact out of a SheetSage2 response. */
 function extractAbc(response) {
     const artifacts = Array.isArray(response?.artifacts) ? response.artifacts : [];
@@ -49,7 +96,6 @@ function extractAbc(response) {
         const tag = String(meta.format ?? meta.extension ?? artifact.id ?? '');
         if (!/abc|score/i.test(tag)) continue;
         if (typeof artifact.payload === 'string') {
-            // The payload is base64.
             return Buffer.from(artifact.payload, 'base64').toString('utf8');
         }
     }
@@ -69,12 +115,10 @@ function extractAbc(response) {
 }
 
 export class SheetSageClient {
-    /** @param {Object} config full config (uses config.transcribe) */
     constructor(config) {
         this.config = config.transcribe ?? {};
     }
 
-    /** Absolute task endpoint. */
     get _taskUrl() {
         const base = String(this.config.baseUrl ?? 'http://127.0.0.1:8081').replace(/\/+$/, '');
         return base + (this.config.endpoint ?? '/v1/tasks/run');
@@ -85,12 +129,6 @@ export class SheetSageClient {
         return `${base}/v1/ui/upload`;
     }
 
-    /**
-     * Transcribe a recording to ABC.
-     *
-     * @param {string} audioPath  og_song.wav / .mp3 / anything ffmpeg reads
-     * @returns {Promise<{abc:string, meta:object}>}
-     */
     async transcribe(audioPath) {
         if (!fs.existsSync(audioPath)) {
             throw new SheetSageClientError(`Audio not found: ${audioPath}`);
@@ -100,20 +138,25 @@ export class SheetSageClient {
         const startedAt = new Date().toISOString();
         const t0 = Date.now();
 
-        // 1. Normalise to a clean PCM WAV (also fixes 0xFFFFFFFF headers).
+        debug(`Starting transcription for: ${audioPath}`);
+
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'resonate-transcribe-'));
         const cleanWav = path.join(tmpDir, 'source.wav');
         try {
+            debug(`Normalizing audio to clean PCM WAV at ${cleanWav}...`);
             await toCleanWav(audioPath, cleanWav, {
                 sampleRate: this.config.sampleRate ?? undefined,
                 silent: true,
             });
+            debug(`PCM WAV created (${fs.statSync(cleanWav).size} bytes).`);
 
-            // 2. Upload it; the server hands back a path it can read.
+            debug(`Uploading WAV to server via ${this._uploadUrl}...`);
             const remotePath = await this._upload(cleanWav, timeoutMs);
+            debug(`Upload succeeded! Server assigned remote path: "${remotePath}"`);
 
-            // 3. Run the task.
+            debug(`Triggering transcription task via ${this._taskUrl} (timeout: ${Math.round(timeoutMs / 1000)}s)...`);
             const response = await this._run(remotePath, timeoutMs);
+            debug(`Task completed successfully!`);
 
             const elapsedMs = Date.now() - t0;
             const abc = extractAbc(response);
@@ -148,38 +191,35 @@ export class SheetSageClient {
         }
     }
 
-    // ------------------------------------------------------------------
-
     async _upload(wavPath, timeoutMs) {
         const bytes = fs.readFileSync(wavPath);
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-
         let res;
         try {
-            res = await fetch(this._uploadUrl, {
+            res = await httpRequest(this._uploadUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'audio/wav',
+                    'Content-Length': bytes.length,
                     'X-AudioCPP-Filename': path.basename(wavPath),
                 },
                 body: bytes,
-                signal: controller.signal,
+                timeoutMs,
             });
         } catch (err) {
             throw this._networkError(err, 'upload the audio');
-        } finally {
-            clearTimeout(timer);
         }
 
         if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            debug(`Upload failed with HTTP ${res.status}: ${body}`);
             throw new SheetSageClientError(
-                `Upload failed (HTTP ${res.status}): ${(await res.text().catch(() => '')).slice(0, 300)}`
+                `Upload failed (HTTP ${res.status}): ${body.slice(0, 300)}`
             );
         }
 
         const json = await res.json().catch(() => null);
         if (!json?.path) {
+            debug(`Upload response JSON missing .path: ${JSON.stringify(json)}`);
             throw new SheetSageClientError('Upload did not return a server-side path.');
         }
         return json.path;
@@ -188,25 +228,25 @@ export class SheetSageClient {
     async _run(remotePath, timeoutMs) {
         const payload = {
             model: this.config.model ?? 'sheetsage2',
-            // No seed: SheetSage2 rejects options it does not define.
             request: { audio: remotePath, options: {} },
         };
 
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const body = Buffer.from(JSON.stringify(payload), 'utf8');
+        debug(`Sending payload: ${JSON.stringify(payload)}`);
 
         let res;
         try {
-            res = await fetch(this._taskUrl, {
+            res = await httpRequest(this._taskUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': body.length,
+                },
+                body,
+                timeoutMs,
             });
         } catch (err) {
             throw this._networkError(err, 'transcribe');
-        } finally {
-            clearTimeout(timer);
         }
 
         const text = await res.text();
@@ -215,16 +255,18 @@ export class SheetSageClient {
 
         if (!res.ok) {
             const message = json?.error?.message ?? text.slice(0, 300);
+            debug(`Server error response (HTTP ${res.status}): ${message}`);
             throw new SheetSageClientError(
                 `SheetSage2 returned ${res.status}: ${message}`
                 + (res.status === 500 && /encoder backend buffer allocation/i.test(message)
                     ? '\nThe server is probably on a non-CPU backend. audio.cpp ignores'
-                      + ' the per-model "backend" key, so SheetSage2 needs its own'
-                      + ' process with "backend": "cpu" — see server-sheetsage.json.'
+                    + ' the per-model "backend" key, so SheetSage2 needs its own'
+                    + ' process with "backend": "cpu" — see server-sheetsage.json.'
                     : '')
             );
         }
         if (!json) {
+            debug(`Server returned non-JSON payload: ${text.slice(0, 300)}`);
             throw new SheetSageClientError(
                 `SheetSage2 returned non-JSON: ${text.slice(0, 300)}`
             );
@@ -233,15 +275,29 @@ export class SheetSageClient {
     }
 
     _networkError(err, verb) {
-        if (err.name === 'AbortError') {
+        if (err.name === 'TimeoutError' || err.name === 'AbortError') {
             return new SheetSageClientError(
                 `Timed out after ${this.config.timeoutSeconds}s trying to ${verb}.`
             );
         }
+
         const base = String(this.config.baseUrl ?? 'http://127.0.0.1:8081');
+        const code = err.code ?? '';
+        const msg = err.message ?? '';
+        const detail = [code, msg].filter(Boolean).join(': ');
+
+        debug(`Network failure during '${verb}': ${detail}`);
+
+        let extraHelp = '';
+        if (code === 'ECONNRESET') {
+            extraHelp = '\n→ Connection closed by server. If audiocpp_server.exe crashed, check the server console window.';
+        } else if (code === 'ECONNREFUSED') {
+            extraHelp = `\n→ Nothing is listening on ${base}. Confirm audiocpp_server.exe is running on port 8081.`;
+        }
+
         return new SheetSageClientError(
             `Could not reach the SheetSage2 server at ${base} to ${verb}. `
-            + `Is it running? (${err.message})`
+            + `Is it running? (${detail})${extraHelp}`
         );
     }
 }

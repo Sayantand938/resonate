@@ -1,6 +1,11 @@
 // src/cli/commands/recreate.mjs
 // `resonate recreate [song]` — re-issue the saved YuE2 request.
+//
+// Existing score.abc is left alone unless --force is passed, matching the
+// behavior of every other stage. Silently clobbering a hand-edited score
+// would be a footgun.
 
+import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig } from '../../song/config.mjs';
@@ -12,7 +17,8 @@ export function registerRecreate(program) {
     program
         .command('recreate [songFolder]')
         .description('Regenerate score.abc from score.meta.json (uses the saved seed)')
-        .action(async (songFolderArg) => {
+        .option('--force', 'overwrite an existing score.abc')
+        .action(async (songFolderArg, opts) => {
             const config = loadConfig();
             const folders = targetFolders(config, songFolderArg);
 
@@ -25,12 +31,14 @@ export function registerRecreate(program) {
             console.log(songFolderArg
                 ? `Recreating ${path.basename(folders[0])}`
                 : 'Recreating all songs with metadata');
+            if (opts.force) console.log('  mode: force');
             console.log('');
 
             let okCount = 0;
             let skipCount = 0;
             let failCount = 0;
             const failures = [];
+            const force = Boolean(opts.force);
 
             for (const folder of folders) {
                 const name = path.basename(folder);
@@ -57,6 +65,14 @@ export function registerRecreate(program) {
                     console.log(`  score   ${chalk.red('[!!]')}  no seed in metadata`);
                     failCount++;
                     failures.push({ name, error: 'no seed in metadata' });
+                    continue;
+                }
+
+                const abcPath = path.join(folder, 'score.abc');
+                if (fs.existsSync(abcPath) && !force) {
+                    console.log(`${chalk.bold(name)}`);
+                    console.log(`  score   ${chalk.dim('[--]')} (score.abc exists; use --force)`);
+                    skipCount++;
                     continue;
                 }
 

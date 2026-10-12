@@ -5,7 +5,10 @@
 //   2. injectPrograms()         — writes program_change events at the start of
 //                                 each channel used by each non-conductor track
 //
-// Both walk the raw MIDI bytes; no dependencies.
+// Both walk the file structurally. injectPrograms uses the shared event
+// parser (src/midi/events.mjs) rather than re-walking raw bytes, so the
+// running-status and meta/sysex handling is the same code every other
+// transform in this folder relies on.
 
 import {
     isMidi,
@@ -15,6 +18,10 @@ import {
     encodeTrackChunk,
 } from './chunks.mjs';
 import { encodeVarLen } from './varlen.mjs';
+import { parseMidiEvents } from './events.mjs';
+
+/** Cap on a single meta text payload, per the MIDI spec (length is 7-bit). */
+const META_TEXT_MAX_BYTES = 0x7f;
 
 export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
     if (!title && !composer) return midiBuffer;
@@ -41,6 +48,8 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
             const type = midiBuffer[p + 1];
             const len = midiBuffer[p + 2];
             p += 3 + len;
+            // Drop any existing track_name / copyright / text — the new
+            // values replace them.
             if (type === 0x03 || type === 0x01 || type === 0x02) continue;
             events.push({ delta, bytes: midiBuffer.subarray(start, p) });
         } else if (status === 0xF0 || status === 0xF7) {
@@ -56,16 +65,8 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
     }
 
     const newEvents = [];
-    const metaText = (t, text) => {
-        const payload = Buffer.from(text, 'utf8').subarray(0, 0x7f);
-        return Buffer.concat([
-            Buffer.from([0x00, 0xFF, t, payload.length]),
-            payload,
-        ]);
-    };
-
-    if (title) newEvents.push(metaText(0x03, title));
-    if (composer) newEvents.push(metaText(0x02, composer));
+    if (title) newEvents.push(metaTextEvent(0x03, title));
+    if (composer) newEvents.push(metaTextEvent(0x02, composer));
 
     for (const ev of events) {
         newEvents.push(encodeVarLen(ev.delta));
@@ -83,6 +84,21 @@ export function injectTitleAndComposer(midiBuffer, { title, composer } = {}) {
         midiBuffer.subarray(0, pos),
         encodeTrackChunk(data),
         midiBuffer.subarray(trackEnd),
+    ]);
+}
+
+function metaTextEvent(type, text) {
+    const payload = Buffer.from(text, 'utf8');
+    if (payload.length > META_TEXT_MAX_BYTES) {
+        console.error(
+            `[warn] meta: text meta 0x${type.toString(16)} is ${payload.length} `
+            + `bytes; MIDI caps this at ${META_TEXT_MAX_BYTES}. Truncating.`
+        );
+    }
+    const capped = payload.subarray(0, META_TEXT_MAX_BYTES);
+    return Buffer.concat([
+        Buffer.from([0x00, 0xFF, type, capped.length]),
+        capped,
     ]);
 }
 
@@ -109,72 +125,67 @@ export function injectPrograms(midiBuffer, programsByChannel = {}) {
     if (!isMidi(midiBuffer)) return midiBuffer;
 
     const headerLen = headerLength(midiBuffer);
-    const tracks = trackChunks(midiBuffer);
-    if (tracks.length === 0) return midiBuffer;
+    const chunks = trackChunks(midiBuffer);
+    if (chunks.length === 0) return midiBuffer;
 
-    // Collect every distinct channel used by channel-voice events in
-    // the track. Meta and sysex events don't carry channels.
-    function channelsUsed(t) {
-        const seen = new Set();
-        let p = t.dataStart;
-        while (p < t.dataEnd) {
-            let b;
-            do { b = midiBuffer[p++]; } while (b & 0x80);
-
-            const status = midiBuffer[p];
-            if (status === 0xFF) {
-                const len = midiBuffer[p + 2];
-                p += 3 + len;
-            } else if (status === 0xF0 || status === 0xF7) {
-                const len = midiBuffer[p + 1];
-                p += 2 + len;
-            } else {
-                const type = status & 0xF0;
-                const ch = status & 0x0F;
-                const need = (type === 0xC0 || type === 0xD0) ? 2 : 3;
-                seen.add(ch);
-                p += need;
-            }
-        }
-        return [...seen].sort((a, b) => a - b);
-    }
-
-    function rewriteTrack(t, programEntries) {
-        const headerBytes = [];
-        for (const { channel, program } of programEntries) {
-            headerBytes.push(
-                Buffer.from([
-                    0x00,                          // delta = 0
-                    0xC0 | (channel & 0x0F),
-                    program & 0x7F,
-                ])
-            );
-        }
-        const data = midiBuffer.subarray(t.dataStart, t.dataEnd);
-        const newData = Buffer.concat([...headerBytes, data]);
-        return encodeTrackChunk(newData);
+    // Use the shared parser so the running-status and meta/sysex handling
+    // is identical to every other transform.
+    let tracks;
+    try {
+        ({ tracks } = parseMidiEvents(midiBuffer));
+    } catch (err) {
+        console.error(
+            `[warn] meta: could not parse MIDI (${err.message}); `
+            + 'skipping program injection.'
+        );
+        return midiBuffer;
     }
 
     const out = [midiBuffer.subarray(0, 8 + headerLen)];
-    for (let i = 0; i < tracks.length; i++) {
-        const t = tracks[i];
+    for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+
+        // Conductor — meta only, no channels.
         if (i === 0) {
-            // Conductor — meta only, no channels.
-            out.push(midiBuffer.subarray(t.start, t.dataEnd));
+            out.push(midiBuffer.subarray(chunk.start, chunk.dataEnd));
             continue;
         }
-        const channels = channelsUsed(t);
-        const programEntries = [];
-        for (const ch of channels) {
-            if (programsByChannel[ch] != null) {
-                programEntries.push({ channel: ch, program: programsByChannel[ch] });
-            }
-        }
+
+        const channels = channelsUsed(tracks[i] ?? []);
+        const programEntries = channels
+            .filter((ch) => programsByChannel[ch] != null)
+            .map((ch) => ({ channel: ch, program: programsByChannel[ch] }));
+
         if (programEntries.length === 0) {
-            out.push(midiBuffer.subarray(t.start, t.dataEnd));
+            out.push(midiBuffer.subarray(chunk.start, chunk.dataEnd));
             continue;
         }
-        out.push(rewriteTrack(t, programEntries));
+
+        out.push(insertProgramChanges(midiBuffer, chunk, programEntries));
     }
     return Buffer.concat(out);
+}
+
+/** Distinct channels touched by any channel-voice event in a parsed track. */
+function channelsUsed(events) {
+    const seen = new Set();
+    for (const ev of events) {
+        if (ev.channel != null) seen.add(ev.channel);
+    }
+    return [...seen].sort((a, b) => a - b);
+}
+
+function insertProgramChanges(midiBuffer, chunk, programEntries) {
+    const headerBytes = [];
+    for (const { channel, program } of programEntries) {
+        headerBytes.push(
+            Buffer.from([
+                0x00,                       // delta = 0
+                0xC0 | (channel & 0x0F),
+                program & 0x7F,
+            ])
+        );
+    }
+    const data = midiBuffer.subarray(chunk.dataStart, chunk.dataEnd);
+    return encodeTrackChunk(Buffer.concat([...headerBytes, data]));
 }

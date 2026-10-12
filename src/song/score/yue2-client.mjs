@@ -40,19 +40,17 @@ export class Yue2Client {
             elapsed_ms: elapsedMs,
             request: payload,
             seed: resolvedSeed,
-            // A minimal snapshot of what came back, useful for debugging
-            // without storing the entire response (which may be large).
             response_summary: {
                 top_level_keys: Object.keys(json ?? {}),
                 has_artifacts: Array.isArray(json?.artifacts),
                 abc_length: abc.length,
                 abc_lines: abc.split(/\r?\n/).length,
             },
-            // The exact CLI command to reproduce this composition. Note the
-            // seed is captured even when seed_mode was "random".
-            recreate_hint:
-                `Set score.seed_mode: fixed and score.seed: ${resolvedSeed} ` +
-                `in config.yaml, then run: resonate score <song-folder> --force`,
+            // `resonate recreate` reads score.meta.json, forces seed_mode to
+            // "fixed", and re-issues the request with this seed. It does
+            // not touch config.yaml, so it works per-song regardless of
+            // what other songs were generated with.
+            recreate_hint: 'resonate recreate <song-folder> --force',
         };
 
         return { abc, meta };

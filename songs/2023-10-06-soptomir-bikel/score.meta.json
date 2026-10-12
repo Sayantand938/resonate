@@ -1,0 +1,33 @@
+{
+  "provider": "sheetsage2",
+  "model": "sheetsage2",
+  "endpoint": "http://127.0.0.1:8081/v1/tasks/run",
+  "source": "og_song.mp3",
+  "requested_at": "2026-10-06T17:29:32.081Z",
+  "finished_at": "2026-10-06T17:33:24.362Z",
+  "elapsed_ms": 232279,
+  "source_bytes": 8737573,
+  "response_summary": {
+    "top_level_keys": [
+      "text",
+      "language",
+      "artifacts",
+      "timing"
+    ],
+    "artifacts": [
+      {
+        "id": "score",
+        "format": "abc",
+        "bytes": 5104
+      },
+      {
+        "id": "events",
+        "format": "sheetsage2-events-json",
+        "bytes": 273228
+      }
+    ],
+    "abc_length": 3826,
+    "abc_lines": 170
+  },
+  "recreate_hint": "resonate transcribe D:\\coding\\resonate\\songs\\2023-10-06-soptomir-bikel --force"
+}

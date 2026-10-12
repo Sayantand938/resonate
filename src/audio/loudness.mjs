@@ -19,32 +19,58 @@ export const DEFAULT_TARGET_LUFS = -14;
 export const DEFAULT_TRUE_PEAK_DB = -1;
 
 /**
- * Pick an output PCM codec that preserves the source's bit depth, so
- * normalizing never silently degrades a 24-bit or float master to 16-bit.
+ * Run an ffmpeg/ffprobe command and capture what it wrote to stderr (or
+ * stdout), via a temp file rather than a pipe.
  *
- * Like measureLoudness, this captures ffprobe's stdout through a temp file
- * rather than a pipe, which the Windows sandbox denies.
+ * The temp file is not a stylistic choice. Under the Windows sandbox, a
+ * piped stdio for these binaries is denied; the temp file works
+ * everywhere. Callers get the raw text back and parse it themselves.
+ *
+ * @param {string} cmd          'ffmpeg' or 'ffprobe'
+ * @param {string[]} args
+ * @param {'stderr'|'stdout'} channel  which stream to capture
+ * @param {Object} [opts]
+ * @param {boolean} [opts.reject=false] pass through to execa
+ * @returns {Promise<{text:string, exitCode:number|undefined}>}
  */
-async function sourceCodec(wavPath) {
-    const stdoutPath = path.join(
-        fs.mkdtempSync(path.join(os.tmpdir(), 'resonate-probe-')),
-        'stream.json'
-    );
-    const fd = fs.openSync(stdoutPath, 'w');
+async function captureOutput(cmd, args, channel, { reject = false } = {}) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'resonate-capture-'));
+    const capturePath = path.join(dir, channel === 'stderr' ? 'stderr.txt' : 'stdout.txt');
+    const fd = fs.openSync(capturePath, 'w');
 
+    // Map the captured stream to the open fd; the other goes to /dev/null
+    // (or NUL). execa accepts 'ignore' for the streams we don't want.
+    const stdio = channel === 'stderr'
+        ? ['ignore', 'ignore', fd]
+        : ['ignore', fd, 'ignore'];
+
+    let exitCode;
     try {
-        await execa('ffprobe', [
-            '-v', 'error',
-            '-select_streams', 'a:0',
-            '-show_entries', 'stream=sample_rate,bits_per_raw_sample,sample_fmt',
-            '-of', 'json',
-            wavPath,
-        ], { stdio: ['ignore', fd, 'ignore'], reject: false });
+        const result = await execa(cmd, args, { stdio, reject });
+        exitCode = result.exitCode;
     } finally {
         fs.closeSync(fd);
     }
 
-    const stream = JSON.parse(fs.readFileSync(stdoutPath, 'utf8'))?.streams?.[0] ?? {};
+    const text = fs.readFileSync(capturePath, 'utf8');
+    fs.rmSync(dir, { recursive: true, force: true });
+    return { text, exitCode };
+}
+
+/**
+ * Pick an output PCM codec that preserves the source's bit depth, so
+ * normalizing never silently degrades a 24-bit or float master to 16-bit.
+ */
+async function sourceCodec(wavPath) {
+    const { text } = await captureOutput('ffprobe', [
+        '-v', 'error',
+        '-select_streams', 'a:0',
+        '-show_entries', 'stream=sample_rate,bits_per_raw_sample,sample_fmt',
+        '-of', 'json',
+        wavPath,
+    ], 'stdout');
+
+    const stream = JSON.parse(text)?.streams?.[0] ?? {};
     const fmt = String(stream.sample_fmt ?? '');
     const bits = Number(stream.bits_per_raw_sample ?? 0);
 
@@ -58,36 +84,21 @@ async function sourceCodec(wavPath) {
 /**
  * Measure a WAV's integrated loudness and true peak.
  *
- * ffmpeg writes the JSON report to stderr, and under the Windows sandbox a
- * piped stdio would be denied — so the report goes to a temp file and is
- * read back instead.
- *
  * @returns {Promise<{inputLufs:number, inputTruePeak:number, inputLra:number}>}
  */
 export async function measureLoudness(wavPath, {
     targetLufs = DEFAULT_TARGET_LUFS,
     truePeakDb = DEFAULT_TRUE_PEAK_DB,
 } = {}) {
-    const reportPath = path.join(
-        fs.mkdtempSync(path.join(os.tmpdir(), 'resonate-loud-')),
-        'report.json'
-    );
-    const fd = fs.openSync(reportPath, 'w');
+    const { text } = await captureOutput('ffmpeg', [
+        '-hide_banner', '-nostats',
+        '-i', wavPath,
+        '-af', `loudnorm=I=${targetLufs}:TP=${truePeakDb}:print_format=json`,
+        '-f', 'null',
+        process.platform === 'win32' ? 'NUL' : '/dev/null',
+    ], 'stderr');
 
-    try {
-        await execa('ffmpeg', [
-            '-hide_banner', '-nostats',
-            '-i', wavPath,
-            '-af', `loudnorm=I=${targetLufs}:TP=${truePeakDb}:print_format=json`,
-            '-f', 'null',
-            process.platform === 'win32' ? 'NUL' : '/dev/null',
-        ], { stdio: ['ignore', 'ignore', fd], reject: false });
-    } finally {
-        fs.closeSync(fd);
-    }
-
-    const stderr = fs.readFileSync(reportPath, 'utf8');
-    const match = stderr.match(/\{[\s\S]*\}/);
+    const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
         throw new Error(`Could not parse loudness report for ${wavPath}`);
     }
@@ -153,9 +164,6 @@ export async function normalizeLoudness(wavPath, {
  * Tail-step shared by both render backends: normalize to the configured
  * streaming target when enabled.
  *
- * @param {string} wavPath
- * @param {{enabled?:boolean, targetLufs?:number, truePeakDb?:number}} loudness
- * @param {{silent?:boolean, onStep?:(msg:string)=>void}} [opts]
  * @returns {Promise<boolean>} whether normalization ran
  */
 export async function applyLoudnessTarget(wavPath, loudness, {

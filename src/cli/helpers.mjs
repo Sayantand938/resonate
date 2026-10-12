@@ -50,6 +50,11 @@ function idWidthFor(folders) {
  * single or batch mode. Handles progress printing, the end-of-run summary,
  * and the exit code.
  *
+ * `all` is treated as a batch command even when given a single folder,
+ * because it returns results from three different stages and the summary
+ * needs to count them per stage. The single-folder shortcut is reserved
+ * for genuinely single-stage commands.
+ *
  * @param {Object} opts
  * @param {string} opts.stageName       'score' | 'transcribe' | 'midi' | ...
  * @param {Function} opts.stageFn       stageScore | stageMidi | stageRender | ...
@@ -66,11 +71,13 @@ export async function runStageCommand({
     cmdOpts,
     config,
 }) {
-    const single = Boolean(songFolderArg);
+    const singleStage = stageName !== 'all';
+    const single = Boolean(songFolderArg) && singleStage;
     const folders = targetFolders(config, songFolderArg);
 
     // A single-song run produces one line, so a skip is worth printing. A
-    // batch run does not -- see the note in progress.mjs.
+    // batch run does not -- see the note in progress.mjs. `all` uses the
+    // batch path even for one folder because it emits three stages.
     const progress = makeProgress({
         showSkips: single,
         idWidth: idWidthFor(folders),
@@ -94,6 +101,7 @@ export async function runStageCommand({
         console.log('');
 
         const results = await stageFn(config, {
+            folder: songFolderArg ? folders[0] : null,
             force: Boolean(cmdOpts.force),
             onProgress: progress.onProgress,
         });

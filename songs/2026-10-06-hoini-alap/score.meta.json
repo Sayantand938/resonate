@@ -1,0 +1,33 @@
+{
+  "provider": "sheetsage2",
+  "model": "sheetsage2",
+  "endpoint": "http://127.0.0.1:8081/v1/tasks/run",
+  "source": "og_song.mp3",
+  "requested_at": "2026-10-06T18:45:30.598Z",
+  "finished_at": "2026-10-06T18:53:11.557Z",
+  "elapsed_ms": 460957,
+  "source_bytes": 4693941,
+  "response_summary": {
+    "top_level_keys": [
+      "text",
+      "language",
+      "artifacts",
+      "timing"
+    ],
+    "artifacts": [
+      {
+        "id": "score",
+        "format": "abc",
+        "bytes": 4648
+      },
+      {
+        "id": "events",
+        "format": "sheetsage2-events-json",
+        "bytes": 295100
+      }
+    ],
+    "abc_length": 3486,
+    "abc_lines": 189
+  },
+  "recreate_hint": "resonate transcribe D:\\coding\\resonate\\songs\\2026-10-06-hoini-alap --force"
+}
