@@ -1,0 +1,33 @@
+{
+  "provider": "sheetsage2",
+  "model": "sheetsage2",
+  "endpoint": "http://127.0.0.1:8081/v1/tasks/run",
+  "source": "og_song.mp3",
+  "requested_at": "2026-10-12T05:22:27.239Z",
+  "finished_at": "2026-10-12T05:25:47.343Z",
+  "elapsed_ms": 200104,
+  "source_bytes": 11351085,
+  "response_summary": {
+    "top_level_keys": [
+      "text",
+      "language",
+      "artifacts",
+      "timing"
+    ],
+    "artifacts": [
+      {
+        "id": "score",
+        "format": "abc",
+        "bytes": 4096
+      },
+      {
+        "id": "events",
+        "format": "sheetsage2-events-json",
+        "bytes": 223036
+      }
+    ],
+    "abc_length": 3072,
+    "abc_lines": 134
+  },
+  "recreate_hint": "resonate transcribe D:\\coding\\resonate\\songs\\2026-10-12-neshar-bojha --force"
+}
