@@ -10,13 +10,6 @@ function isPlainObject(v) {
     return v != null && typeof v === 'object' && !Array.isArray(v);
 }
 
-/**
- * Recursively merge `override` onto `base`, returning a new object.
- *
- * Plain objects merge key by key; arrays and scalars replace wholesale.
- * This is what makes `config.local.yaml` able to redefine the whole
- * `render.vst3_routing` table rather than concatenating onto it.
- */
 export function deepMerge(base, override) {
     if (!isPlainObject(base)) return override;
     if (!isPlainObject(override)) return override === undefined ? base : override;
@@ -30,23 +23,137 @@ export function deepMerge(base, override) {
     return out;
 }
 
-/**
- * Read and merge `config.yaml` with an optional gitignored
- * `config.local.yaml` sitting beside it.
- *
- * The local file holds machine-specific settings (absolute VST3 paths,
- * a different render backend, a pinned humanize seed) that must not be
- * committed. It is deep-merged over the tracked config, so it only needs
- * to name the keys it actually overrides.
- */
+function readYamlIfExists(p) {
+    if (!fs.existsSync(p)) return null;
+    return yaml.load(fs.readFileSync(p, 'utf8')) ?? {};
+}
+
 function readMergedConfig(configPath) {
-    const data = yaml.load(fs.readFileSync(configPath, 'utf8')) ?? {};
-
+    const data = readYamlIfExists(configPath) ?? {};
     const localPath = path.join(path.dirname(configPath), 'config.local.yaml');
-    if (!fs.existsSync(localPath)) return { data, localPath: null };
+    const local = readYamlIfExists(localPath);
+    return { data: local ? deepMerge(data, local) : data, localPath };
+}
 
-    const local = yaml.load(fs.readFileSync(localPath, 'utf8')) ?? {};
-    return { data: deepMerge(data, local), localPath };
+/**
+ * Normalize one instrument entry from the menu into { engine, vst3|sfz }.
+ *
+ * Accepted shapes:
+ *   "C:/path/to/plugin.vst3"                         (vst3, shorthand)
+ *   { engine: vst3,  vst3: "C:/path/to/plugin.vst3" }
+ *   { engine: sfizz, sfz:  "C:/path/to/soundfont.sfz" }
+ */
+function normalizeInstrumentEntry(raw, name) {
+    if (typeof raw === 'string') {
+        return { engine: 'vst3', vst3: raw };
+    }
+    if (isPlainObject(raw)) {
+        const engine = String(raw.engine ?? 'vst3').toLowerCase();
+        if (engine === 'vst3') {
+            if (!raw.vst3) {
+                throw new Error(
+                    `instrument "${name}" declares engine vst3 but has no "vst3" path.`
+                );
+            }
+            return { engine: 'vst3', vst3: raw.vst3 };
+        }
+        if (engine === 'sfizz') {
+            if (!raw.sfz) {
+                throw new Error(
+                    `instrument "${name}" declares engine sfizz but has no "sfz" path.`
+                );
+            }
+            return { engine: 'sfizz', sfz: raw.sfz };
+        }
+        throw new Error(
+            `instrument "${name}" names unknown engine "${raw.engine}". `
+            + `Known engines: vst3, sfizz.`
+        );
+    }
+    throw new Error(`instrument "${name}" must be a string or an object.`);
+}
+
+/** Normalize the whole instrument menu. */
+function normalizeInstruments(raw) {
+    if (!isPlainObject(raw)) return {};
+    const out = {};
+    for (const [name, value] of Object.entries(raw)) {
+        try {
+            out[name] = normalizeInstrumentEntry(value, name);
+        } catch (err) {
+            throw new Error(`render.instruments.${name}: ${err.message}`);
+        }
+    }
+    return out;
+}
+
+/**
+ * Normalize a voice → instrument-name map, validating that every named
+ * instrument exists in the menu. Returns { voiceName: instrumentName }.
+ *
+ * If a value is an object (legacy inline entry), it is normalized inline
+ * and registered under a synthetic name so older configs keep working.
+ * New configs should use a bare instrument name.
+ */
+function normalizeVoiceMap(raw, instrumentNames, label, instrumentsOut) {
+    if (!isPlainObject(raw)) return {};
+    const out = {};
+
+    for (const [voiceName, value] of Object.entries(raw)) {
+        if (typeof value === 'string') {
+            if (!instrumentNames.has(value)) {
+                throw new Error(
+                    `render.${label}.${voiceName} names instrument "${value}" `
+                    + `but no such instrument exists. Known instruments: `
+                    + `${[...instrumentNames].join(', ') || '(none)'}.`
+                );
+            }
+            out[voiceName] = value;
+            continue;
+        }
+
+        // Legacy inline object — register it under a synthetic name so the
+        // rest of the pipeline only ever deals with names.
+        if (isPlainObject(value)) {
+            const synthetic = `__inline__${label}__${voiceName}`;
+            instrumentsOut[synthetic] = normalizeInstrumentEntry(value, synthetic);
+            instrumentNames.add(synthetic);
+            out[voiceName] = synthetic;
+            continue;
+        }
+
+        throw new Error(
+            `render.${label}.${voiceName} must be an instrument name or an `
+            + `inline { engine, vst3|sfz } object.`
+        );
+    }
+
+    return out;
+}
+
+/** Normalize a voice → gain map. */
+function normalizeGains(raw) {
+    if (!isPlainObject(raw)) return {};
+    const out = {};
+    for (const [voiceName, value] of Object.entries(raw)) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) {
+            throw new Error(`render.gains.${voiceName} must be a number.`);
+        }
+        out[voiceName] = n;
+    }
+    return out;
+}
+
+/**
+ * Read `songs/<slug>/render.local.yaml`, if present. Returns the parsed
+ * object, or null.
+ */
+export function readSongRenderOverride(songFolder) {
+    if (!songFolder) return null;
+    const p = path.join(songFolder, 'render.local.yaml');
+    if (!fs.existsSync(p)) return null;
+    return yaml.load(fs.readFileSync(p, 'utf8')) ?? {};
 }
 
 export function loadConfig(configPathOverride) {
@@ -80,6 +187,23 @@ export function loadConfig(configPathOverride) {
 
     const writerModel = lyricsRaw.writer_model ?? 'openai/gpt-5.6-luna';
     const plannerModel = lyricsRaw.planner_model ?? writerModel;
+
+    // ---- Instrument menu + voice defaults ----
+    //
+    // `instruments` is the catalogue. `voices` maps ABC voice names to
+    // instrument names. Both are fully validated here so a typo fails at
+    // load, not mid-render.
+    const instruments = normalizeInstruments(renderRaw.instruments);
+    const instrumentNames = new Set(Object.keys(instruments));
+
+    const voices = normalizeVoiceMap(
+        renderRaw.voices,
+        instrumentNames,
+        'voices',
+        instruments
+    );
+
+    const gains = normalizeGains(renderRaw.gains);
 
     const cfg = {
         root: base,
@@ -125,8 +249,6 @@ export function loadConfig(configPathOverride) {
             timeoutSeconds: Number(renderRaw.timeout_seconds ?? 300),
             composer: renderRaw.composer ?? null,
 
-            // `render.lufs` is the pre-0.2 name for `loudness.target_lufs`;
-            // still honoured as a fallback so old configs keep working.
             loudness: {
                 enabled: Boolean(loudRaw.enabled ?? true),
                 targetLufs: Number(
@@ -136,20 +258,25 @@ export function loadConfig(configPathOverride) {
             },
 
             backend: String(renderRaw.backend ?? 'vst3').toLowerCase(),
+            sfizzBin: String(renderRaw.sfizz_bin ?? 'sfizz_render'),
 
-            // Voice-name → VST3 path. Keys are ABC voice names (Vocal, Ins,
-            // Shamisen, ...) plus the reserved key "accompaniment" for the
-            // abcjs-generated chord track. When this map is non-empty,
-            // runRender builds VST3 routes by voice name instead of using
-            // the static vst3Routing table below.
-            voices: isPlainObject(renderRaw.voices) ? { ...renderRaw.voices } : {},
+            // The menu and the house defaults.
+            instruments,
+            voices,
+            gains,
 
-            // Per-voice gain, keyed the same as `voices`. Voices not listed
-            // default to gain 1.0.
-            gains: isPlainObject(renderRaw.gains) ? { ...renderRaw.gains } : {},
+            // Populated per-song by applySongOverride. Empty by default so
+            // a song with no render.local.yaml behaves exactly as before.
+            songVoiceOverrides: {},
+            songGainOverrides: {},
 
-            // Static VST3 routing table. Fallback for setups that don't use
-            // `voices`. Ignored when `voices` is non-empty.
+            voiceFallbackPolicy: String(
+                renderRaw.voice_fallback_policy ?? 'error'
+            ).toLowerCase(),
+            voiceFallback: renderRaw.voice_fallback
+                ? normalizeInstrumentEntry(renderRaw.voice_fallback, 'voice_fallback')
+                : null,
+
             vst3Routing: Array.isArray(renderRaw.vst3_routing)
                 ? renderRaw.vst3_routing.map((r) => ({
                     channels: Array.isArray(r.channels) ? r.channels : [r.channels],
@@ -186,7 +313,101 @@ export function loadConfig(configPathOverride) {
 }
 
 /**
+ * Apply a song's `render.local.yaml` on top of the loaded config.
+ *
+ * The local file is *sparse*: it names only the voices it wants different.
+ * Everything it does not name falls through to the global default.
+ *
+ *   render:
+ *     voices:
+ *       accompaniment: livingroom-upright-piano-micro-sfz
+ *       Ins: AGML
+ *     gains:
+ *       accompaniment: 1.5
+ *
+ * Every instrument name is validated against the menu here, so a typo is
+ * a load-time error rather than a render-time surprise.
+ *
+ * @param {object} config       result of loadConfig()
+ * @param {string} songFolder
+ * @returns {object}            a shallow-cloned config with overrides applied
+ */
+export function applySongOverride(config, songFolder) {
+    const override = readSongRenderOverride(songFolder);
+    if (!override) return config;
+
+    const renderRaw = override.render ?? {};
+    const voiceOverridesRaw = renderRaw.voices;
+    const gainOverridesRaw = renderRaw.gains;
+
+    const hasVoices = isPlainObject(voiceOverridesRaw)
+        && Object.keys(voiceOverridesRaw).length > 0;
+    const hasGains = isPlainObject(gainOverridesRaw)
+        && Object.keys(gainOverridesRaw).length > 0;
+
+    if (!hasVoices && !hasGains) return config;
+
+    const songName = path.basename(songFolder);
+    const instrumentNames = new Set(Object.keys(config.render.instruments));
+
+    const voiceOverrides = {};
+
+    if (hasVoices) {
+        for (const [voiceName, instrumentName] of Object.entries(voiceOverridesRaw)) {
+            if (typeof instrumentName !== 'string') {
+                console.error(
+                    `[warn] ${songName}/render.local.yaml: `
+                    + `render.voices.${voiceName} must be an instrument name `
+                    + `(a string). Ignoring.`
+                );
+                continue;
+            }
+            if (!instrumentNames.has(instrumentName)) {
+                console.error(
+                    `[warn] ${songName}/render.local.yaml: `
+                    + `render.voices.${voiceName} names "${instrumentName}" `
+                    + `but no such instrument exists. Known instruments: `
+                    + `${[...instrumentNames].join(', ') || '(none)'}. Ignoring.`
+                );
+                continue;
+            }
+            voiceOverrides[voiceName] = instrumentName;
+        }
+    }
+
+    const gainOverrides = {};
+
+    if (hasGains) {
+        for (const [voiceName, value] of Object.entries(gainOverridesRaw)) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) {
+                console.error(
+                    `[warn] ${songName}/render.local.yaml: `
+                    + `render.gains.${voiceName} = "${value}" is not a number. Ignoring.`
+                );
+                continue;
+            }
+            gainOverrides[voiceName] = n;
+        }
+    }
+
+    return {
+        ...config,
+        render: {
+            ...config.render,
+            songVoiceOverrides: voiceOverrides,
+            songGainOverrides: gainOverrides,
+        },
+    };
+}
+
+/**
  * Assert that the config has everything a lyrics stage needs.
+ *
+ * The lyrics stage is the only consumer of `config.apiKey`; every other
+ * stage works offline. This is called by the Planner and SongWriter
+ * constructors so a missing key fails at construction with a clear
+ * message, rather than as a confusing 401 from the OpenAI client.
  */
 export function requireApiKey(config) {
     if (!config.apiKey) {

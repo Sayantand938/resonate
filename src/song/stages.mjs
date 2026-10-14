@@ -20,6 +20,7 @@ import { renderWithAbcjs } from '../abc/engine.mjs';
 import { voiceNamesByChannel } from '../abc/voices.mjs';
 import { humanizeMidiBuffer } from '../midi/humanize.mjs';
 import { renderWithBackend } from '../audio/backends.mjs';
+import { applySongOverride } from './config.mjs';
 import {
     generateVideo,
     findThumbnail,
@@ -56,10 +57,6 @@ export async function runScore(config, songFolder) {
 
 // =====================================================================
 // transcribe  (og_song.* -> score.abc via SheetSage2)
-//
-// The mirror of the score stage: instead of inventing a score from lyrics,
-// it listens to an existing recording. Same output artifact, so midi/render/
-// video are unchanged.
 // =====================================================================
 
 export async function runTranscribe(config, songFolder) {
@@ -136,7 +133,6 @@ export async function runMidi(config, songFolder, {
         throw new Error(`MIDI render did not produce ${midiPath}`);
     }
 
-    // Optional humanization: rewrite score.mid -> score.human.mid
     const h = config.render.humanize;
     const humanized = Boolean(h && h.enabled);
     if (humanized) {
@@ -171,7 +167,6 @@ export async function runMidi(config, songFolder, {
 // =====================================================================
 
 export async function runRender(config, songFolder, { keep = false } = {}) {
-    // Prefer the humanized MIDI if it exists and humanize is enabled.
     const h = config.render.humanize;
     const humanMidiPath = path.join(songFolder, 'score.human.mid');
     const cleanMidiPath = path.join(songFolder, 'score.mid');
@@ -188,44 +183,57 @@ export async function runRender(config, songFolder, { keep = false } = {}) {
     const wavPath = path.join(songFolder, 'song.wav');
     const abcPath = path.join(songFolder, 'score.abc');
 
-    // Build VST3 routes from the ABC voice names, when the config provides
-    // a voice → instrument map. Falls through to the classic static
-    // routing table (config.render.vst3Routing) otherwise.
-    const routes = buildVoiceRoutes(config, abcPath, midiPath);
+    // Apply this song's render.local.yaml (per-voice instrument choices)
+    // on top of the loaded config. A song with no override file returns
+    // the config unchanged, so existing songs behave exactly as before.
+    const effectiveConfig = applySongOverride(config, songFolder);
 
-    // Backend selection, validation, and loudness normalization all live in
-    // the registry; stages only decide which MIDI to render.
+    const routes = buildVoiceRoutes(effectiveConfig, abcPath, midiPath, songFolder);
+
     const result = await renderWithBackend({
-        backend: config.render.backend ?? 'vst3',
+        backend: effectiveConfig.render.backend ?? 'vst3',
         midiPath,
         wavPath,
-        config,
+        config: effectiveConfig,
         routes,
         keep,
-        // Stages run silently on success; the CLI wrappers report instead.
         silent: true,
     });
 
-    return { wavPath: result.wavPath, midiPath };
+    return { wavPath: result.wavPath, midiPath, engines: result.engines };
 }
 
 /**
- * Build a VST3 routes array from the ABC voice names in `config.render.voices`.
+ * Build a routes array from the ABC voice names.
  *
- * Returns undefined when the config has no `voices` block, so callers fall
- * back to the static `render.vst3_routing` table.
+ * For each voice in the ABC, the effective instrument is resolved as:
  *
- * Throws if a voice appears in the ABC but has no entry in `render.voices`.
- * Silent drops are worse than an error: "why is my shamisen missing?" is a
- * much harder debugging question than "voice Shamisen has no instrument."
+ *   1. the song's own choice
+ *      (songs/<slug>/render.local.yaml → render.voices.<VoiceName>)
+ *   2. otherwise the house default
+ *      (config.yaml → render.voices.<VoiceName>)
+ *   3. otherwise `render.voice_fallback_policy`:
+ *        "fallback"  warn, then use `render.voice_fallback`
+ *        "error"     throw, naming the voice
+ *
+ * Gain resolves the same way, per voice:
+ *
+ *   1. song override  (render.local.yaml → render.gains.<VoiceName>)
+ *   2. house default  (config.yaml → render.gains.<VoiceName>)
+ *   3. 1.0
+ *
+ * An instrument is looked up by name in `render.instruments` and turned
+ * into a route carrying its engine and path. Every route names its engine
+ * explicitly; the dispatcher in backends.mjs never infers.
  */
-function buildVoiceRoutes(config, abcPath, midiPath) {
-    const voices = config.render.voices;
-    if (!voices || Object.keys(voices).length === 0) return undefined;
+function buildVoiceRoutes(config, abcPath, midiPath, songFolder) {
+    const render = config.render;
+    const instruments = render.instruments ?? {};
+    if (!render.voices || Object.keys(render.voices).length === 0) {
+        return undefined;
+    }
 
     if (!fs.existsSync(abcPath) || !fs.existsSync(midiPath)) {
-        // No ABC or MIDI means we cannot derive voice names. Fall back to
-        // the static table rather than erroring.
         return undefined;
     }
 
@@ -237,30 +245,75 @@ function buildVoiceRoutes(config, abcPath, midiPath) {
         return undefined;
     }
 
-    const gains = config.render.gains ?? {};
+    const defaultGains = render.gains ?? {};
+    const songGains = render.songGainOverrides ?? {};
+    const songVoices = render.songVoiceOverrides ?? {};
+
+    const fallbackPolicy = render.voiceFallbackPolicy ?? 'error';
+    const fallbackEntry = render.voiceFallback ?? null;
+    const songName = path.basename(songFolder || path.dirname(abcPath));
+
     const routes = [];
 
     for (const [chStr, voiceName] of Object.entries(channelToVoice)) {
-        const vst3 = voices[voiceName];
-        if (!vst3) {
+        // ---- instrument: local → global → fallback → error ----
+        const chosenName = songVoices[voiceName] ?? render.voices[voiceName];
+        let entry = chosenName ? instruments[chosenName] : null;
+
+        if (!entry) {
+            if (fallbackPolicy === 'fallback' && fallbackEntry) {
+                console.error(
+                    `[warn] no instrument for ABC voice "${voiceName}" in `
+                    + `${songName} — using fallback. `
+                    + `Add it to render.voices in config.yaml, or set `
+                    + `render.voices.${voiceName} in the song's `
+                    + `render.local.yaml.`
+                );
+                entry = fallbackEntry;
+            } else {
+                throw new Error(
+                    `No instrument for ABC voice "${voiceName}" in ${songName}. `
+                    + `Add render.voices.${voiceName} in config.yaml, or set `
+                    + `render.voices.${voiceName} in the song's `
+                    + `render.local.yaml, or set `
+                    + `render.voice_fallback_policy: fallback.`
+                );
+            }
+        }
+
+        // ---- gain: local → global → 1.0 ----
+        const gain = songGains[voiceName]
+            ?? defaultGains[voiceName]
+            ?? 1.0;
+
+        // ---- emit the route ----
+        const engine = entry.engine ?? 'vst3';
+        const route = {
+            engine,
+            channels: [Number(chStr)],
+            gain,
+        };
+
+        if (engine === 'vst3') {
+            route.vst3 = entry.vst3;
+        } else if (engine === 'sfizz') {
+            route.sfz = entry.sfz;
+        } else {
             throw new Error(
-                `No instrument configured for ABC voice "${voiceName}" `
-                + `in ${path.basename(path.dirname(abcPath))}. `
-                + `Add it under render.voices in config.yaml.`
+                `Voice "${voiceName}" in ${songName} resolves to instrument `
+                + `"${chosenName ?? '(fallback)'}" with unknown engine `
+                + `"${engine}". Known engines: vst3, sfizz.`
             );
         }
-        routes.push({
-            channels: [Number(chStr)],
-            vst3,
-            gain: gains[voiceName] ?? 1.0,
-        });
+
+        routes.push(route);
     }
 
     return routes;
 }
 
 // =====================================================================
-// video  (song.wav + thumbnail -> song.mp4)
+// video
 // =====================================================================
 
 export async function runVideo(config, songFolder) {
@@ -291,7 +344,6 @@ export async function runVideo(config, songFolder) {
         crf: v.crf,
         preset: v.preset,
         audioBitrate: v.audioBitrate,
-        // Stages run silently on success; the CLI wrappers report instead.
         silent: true,
     });
 

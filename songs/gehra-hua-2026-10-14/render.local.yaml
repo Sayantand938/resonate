@@ -1,0 +1,7 @@
+render:
+  voices:
+    Vocal: AGML
+    Ins: livingroom-upright-piano-micro-sfz
+  gains:
+    Vocal: 0.7
+    Ins: 0.7

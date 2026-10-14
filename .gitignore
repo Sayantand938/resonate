@@ -131,4 +131,4 @@ vst-debug.log
 routes.json
 
 # Local scratch space for pipeline verification runs:
-.verify/
+.verify/songs/**/song.*.wav

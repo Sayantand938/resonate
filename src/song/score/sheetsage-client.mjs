@@ -18,6 +18,7 @@ export const SOURCE_NAMES = [
     'og_song.m4a',
     'og_song.flac',
     'og_song.ogg',
+    'og_song.opus',
 ];
 
 /** Find the source recording for a song, or null. */

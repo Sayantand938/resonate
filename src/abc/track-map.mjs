@@ -62,6 +62,21 @@ export function deriveTrackToChannelMap(abcSource, midiBuffer) {
     const hasAccompaniment = midiTrackCount > voiceCount + 1;
     const map = {};
 
+    // The channel arithmetic below assumes exactly one track per declared
+    // voice (plus conductor, plus optional accompaniment). A voice declared
+    // in the ABC header but given no notes produces no track, which shifts
+    // every subsequent voice onto the wrong channel — silently, because the
+    // note data itself is still valid. Warn rather than proceed blind.
+    const expectedTracks = 1 + voiceCount + (hasAccompaniment ? 1 : 0);
+    if (midiTrackCount !== expectedTracks) {
+        console.error(
+            `[warn] abc-engine: ABC declares ${voiceCount} voice(s) but abcjs `
+            + `emitted ${midiTrackCount} track(s) (expected ${expectedTracks}). `
+            + `A voice may be declared but have no notes — channel assignments `
+            + `below may be wrong.`
+        );
+    }
+
     if (voiceCount > MAX_CHANNELS) {
         console.error(
             `[warn] abc-engine: ${voiceCount} voices in ABC, but MIDI has only `

@@ -15,10 +15,6 @@ lyrics:
   max_tokens: 4000
 
   save_plan: true
-
-  # Song folders are named <slug>-<date> when this is true, so a directory
-  # listing sorts by title with same-title songs in chronological order.
-  # Set to false to use <slug> alone (collisions get a -2, -3, ... suffix).
   date_in_folder: true
 
 score:
@@ -34,26 +30,12 @@ score:
   seed_mode: random
   seed: 1234
 
-# Transcription: `resonate transcribe` turns an existing recording
-# (og_song.wav / .mp3 / .m4a / .flac / .ogg in the song folder) into
-# score.abc — the same artifact the score stage produces, so midi, render
-# and video are unchanged. Any source is re-encoded through ffmpeg first,
-# which also repairs downloaded WAVs whose RIFF sizes are 0xFFFFFFFF.
-#
-# NOTE the different port. SheetSage2 must run in its own server process
-# with "backend": "cpu": audio.cpp ignores the per-model "backend" key, so
-# a server with a global vulkan backend fails with "encoder backend buffer
-# allocation failed" on AMD hardware. See server-sheetsage.json.
 transcribe:
   provider: sheetsage2
   base_url: http://127.0.0.1:8081
   endpoint: /v1/tasks/run
   model: sheetsage2
-
-  # null keeps the source sample rate; set e.g. 48000 to force one.
   sample_rate: null
-
-  # A 3:37 track took ~3 minutes on CPU. Generous by default.
   timeout_seconds: 1800
 
 render:
@@ -61,81 +43,101 @@ render:
   timeout_seconds: 300
   composer: Sayantan
 
-  # Final loudness normalization, applied after the backend returns.
-  # Spotify / YouTube targets: -14 LUFS integrated, -1 dBTP true peak.
-  #
-  # Reaching the target from a very dynamic mix needs some gain reduction,
-  # because loudnorm limits rather than clips. Raise target_lufs towards
-  # -10 for a louder, more squashed master; set enabled:false to keep the
-  # raw backend level and let the streaming service do all the work.
   loudness:
     enabled: true
     target_lufs: -14
     true_peak_db: -1
 
-  # WAV render backend. Only "vst3" is supported.
-  backend: vst3
+  # Path to the sfizz CLI. Override here if it's not on PATH.
+  sfizz_bin: sfizz_render
 
-  # ---- VST3 routing by ABC voice name ----
+  # ---- The instrument menu ----
   #
-  # Each key is the name of a voice in the score. `V: Vocal` in the ABC
-  # means the key is "Vocal"; `V: Ins` means "Ins". The reserved key
-  # "accompaniment" refers to the chord track abcjs generates from the
-  # "C", "G7", "Fmaj7" chord symbols — it has no `V:` line of its own.
+  # Every instrument the pipeline can play, keyed by a name you choose.
+  # A name is any string; a voice refers to it by that name. Add an
+  # instrument here once and it is available to every song.
   #
-  # This map is universal: every song that declares a voice named here
-  # uses the corresponding plugin. Adding a Shamisen to one song's ABC
-  # and adding `Shamisen: "..."` here makes it available to every future
-  # song that declares the same voice.
+  # An entry is:
+  #   { engine: vst3,  vst3: "C:/path/to/plugin.vst3" }
+  #   { engine: sfizz, sfz:  "C:/path/to/soundfont.sfz" }
   #
-  # Voices that appear in a score but not in this map cause a render
-  # error naming the missing voice. Silent drops would be worse.
+  # The engine names the renderer; the path is the instrument itself.
+  instruments:
+    # ---- VST3 instruments ----
+    AGML:
+      engine: vst3
+      vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+    "AGPL Bass":
+      engine: vst3
+      vst3: "C:/Program Files/Common Files/VST3/AGPL.vst3/Contents/x86_64-win/AGPL.vst3"
+    "Grand Piano":
+      engine: vst3
+      vst3: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
+
+    # ---- Soundfonts ----
+    # The "- vel XFades" variant crossfades velocity layers instead of
+    # jumping between them, so soft notes are a genuinely different sample
+    # rather than the same one played quieter.
+    livingroom-upright-piano-micro-sfz:
+      engine: sfizz
+      sfz: "D:/media/soundfonts/livingroom-upright-piano-micro-sfz/KeyPleezer LivingRoom Upright - Free Micro SFZ - vel XFades.sfz"
+    "LR Upright (muted)":
+      engine: sfizz
+      sfz: "D:/media/soundfonts/livingroom-upright-piano-micro-sfz/KeyPleezer LivingRoom Upright - Free Micro SFZ - muted - vel XFades.sfz"
+
+    # Placeholders — replace with real SFZ paths as you collect them.
+    # If a voice points at a placeholder before the path is real, the
+    # render fails with "SFZ not found: PLACEHOLDER/..." which names the gap.
+    "SFZ Vocal":
+      engine: sfizz
+      sfz: "PLACEHOLDER/Vocal.sfz"
+    "SFZ Guitar":
+      engine: sfizz
+      sfz: "PLACEHOLDER/Guitar.sfz"
+    "SFZ Bass":
+      engine: sfizz
+      sfz: "PLACEHOLDER/Bass.sfz"
+
+  # ---- The house defaults ----
   #
-  # The vst3 path is the inner .vst3 FILE, not the outer folder. On
-  # Windows that is usually:
-  #   <Name>.vst3/Contents/x86_64-win/<Name>.vst3
-  # Some plugins ship as a single .vst3 file directly; use that path then.
+  # Which instrument each ABC voice uses, unless a song overrides it.
+  # Values are instrument names from the menu above.
   #
-  # To list every installed VST3:
-  #   Get-ChildItem -Path 'C:\Program Files\Common Files\VST3' -Recurse `
-  #     -Filter *.vst3 |
-  #     Where-Object { $_.FullName -match 'x86_64-win' } |
-  #     Select-Object -ExpandProperty FullName
+  # The reserved key "accompaniment" is the chord track abcjs generates
+  # from "C", "G7", "Fmaj7" symbols. It has no `V:` line of its own.
   voices:
-    Vocal:         "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
-    Ins:           "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
-    accompaniment: "C:/Program Files/Common Files/VST3/Audiolatry/Grand Piano.vst3"
+    Vocal:         AGML
+    Ins:           AGML
+    accompaniment: "Grand Piano"
+    Bass:          "AGPL Bass"
 
-  # Per-voice gain. Voices not listed default to 1.0. Use this to balance
-  # plugins that output at very different levels.
+  # Default gain per voice. Any voice not listed defaults to 1.0.
+  # A song can override any of these in its render.local.yaml.
   gains:
     Vocal:         0.9
     Ins:           0.9
     accompaniment: 3.0
+    Bass:          1.0
 
-  # Static VST3 routing table. Fallback for setups that don't use `voices`.
-  # Ignored when `voices` is non-empty.
+  # What to do when an ABC declares a voice with no entry in either the
+  # song's overrides or `voices` above.
+  #
+  #   "error"     fail the render, naming the voice  (default)
+  #   "fallback"  warn on stderr, then use `voice_fallback` below
+  #
+  # The fallback is a convenience while a song is being sketched: a new
+  # voice renders immediately on a placeholder instrument instead of
+  # failing the whole render. Switch to "error" once your voice set is
+  # settled so a typo'd voice name fails loudly.
+  voice_fallback_policy: fallback
+  voice_fallback:
+    engine: vst3
+    vst3: "C:/Program Files/Common Files/VST3/AGML.vst3/Contents/x86_64-win/AGML.vst3"
+
+  # Static VST3 routing table. Legacy escape hatch for setups that do not
+  # use the instrument menu. Ignored whenever `voices` is non-empty.
   vst3_routing: []
 
-  # Humanize: subtle timing drift, velocity variation, and chord roll added
-  # to the rendered MIDI before it goes to the audio backend.
-  #
-  # When enabled, runMidi writes score.human.mid (leaving score.mid as the
-  # clean abcjs output), and runRender prefers the humanized file. Toggle
-  # enabled:false to A/B against the mechanical version.
-  #
-  # These are deliberately small. Timing moves as a bounded random walk --
-  # the part pushes and pulls as a phrase -- instead of independent jitter on
-  # every note, which is what reads as an unsteady beginner. Millisecond
-  # values are converted with the song's own tempo, so 4 ms means 4 ms at
-  # 70 BPM and at 140 BPM alike.
-  #
-  #   timing_ms       how far the drift wanders either way, ms     (0-15)
-  #   velocity        max velocity variation per note, ±           (0-10)
-  #   chord_roll_ms   stagger between same-tick chord notes, ms    (0-10)
-  #   roll_order      "up" (low→high, a strum) or "down" (high→low)
-  #   min_vel/max_vel velocity clamp for the humanized notes
-  #   seed            0 = random each run; non-zero = deterministic
   humanize:
     enabled: true
     timing_ms: 4
@@ -146,22 +148,11 @@ render:
     max_vel: 115
     seed: 0
 
-# Video: `resonate video` pairs song.wav with the still image in the song
-# folder (thumbnail.png / .jpg / .jpeg / .webp) and writes song.mp4.
-# Songs without a thumbnail are skipped with a warning, never guessed at.
 video:
   width: 1920
   height: 1080
   fps: 30
-
-  # How a thumbnail that isn't already 16:9 is fitted to the frame:
-  #   blur  blurred copy of the art fills the frame behind it (default)
-  #   pad   centred on a black frame, nothing cropped
-  #   crop  scaled to cover, overhang trimmed
   fit: blur
-
-  # x264 quality and speed. Lower crf = better and bigger (18 is near-lossless
-  # for a still image); slower presets compress better at the same quality.
   crf: 18
   preset: medium
   audio_bitrate: 192k

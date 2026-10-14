@@ -1,0 +1,33 @@
+{
+  "provider": "sheetsage2",
+  "model": "sheetsage2",
+  "endpoint": "http://127.0.0.1:8081/v1/tasks/run",
+  "source": "og_song.opus",
+  "requested_at": "2026-10-14T11:18:12.240Z",
+  "finished_at": "2026-10-14T11:25:46.406Z",
+  "elapsed_ms": 454163,
+  "source_bytes": 6473914,
+  "response_summary": {
+    "top_level_keys": [
+      "text",
+      "language",
+      "artifacts",
+      "timing"
+    ],
+    "artifacts": [
+      {
+        "id": "score",
+        "format": "abc",
+        "bytes": 5980
+      },
+      {
+        "id": "events",
+        "format": "sheetsage2-events-json",
+        "bytes": 375668
+      }
+    ],
+    "abc_length": 4484,
+    "abc_lines": 229
+  },
+  "recreate_hint": "resonate transcribe D:\\coding\\resonate\\songs\\gehra-hua-2026-10-14 --force"
+}
